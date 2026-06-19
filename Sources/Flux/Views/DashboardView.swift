@@ -70,7 +70,7 @@ struct DashboardView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Text("Flux")
-                .font(.system(.title2, design: .default, weight: .semibold))
+                .font(Theme.display)
 
             Spacer()
 
@@ -97,35 +97,37 @@ struct DashboardView: View {
     }
 
     private var overviewRow: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) {
-                systemSummary
-                    .frame(minWidth: 260, idealWidth: 280, maxWidth: 300)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                activityBlock
-                    .frame(minWidth: 420, maxWidth: .infinity)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 12) {
-                systemSummary
-                activityBlock
-            }
+        VStack(spacing: 12) {
+            systemSummary
+            activityBlock
         }
     }
 
     private var systemSummary: some View {
         surface {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("System", icon: "gauge.with.dots.needle.50percent")
 
-                VStack(spacing: 0) {
-                    ForEach(Array(metricItems.enumerated()), id: \.element.id) { index, item in
-                        metricRow(item)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 0) {
+                        ForEach(Array(metricItems.enumerated()), id: \.element.id) { index, item in
+                            metricCell(item)
+                                .frame(minWidth: 150, maxWidth: .infinity)
 
-                        if index < metricItems.count - 1 {
-                            Divider().overlay(Theme.border.opacity(0.7))
+                            if index < metricItems.count - 1 {
+                                Divider()
+                                    .overlay(Theme.border.opacity(0.7))
+                                    .frame(height: 36)
+                            }
+                        }
+                    }
+
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 3),
+                        spacing: 10
+                    ) {
+                        ForEach(metricItems) { item in
+                            metricCell(item)
                         }
                     }
                 }
@@ -133,22 +135,25 @@ struct DashboardView: View {
         }
     }
 
-    private func metricRow(_ item: MetricItem) -> some View {
+    private func metricCell(_ item: MetricItem) -> some View {
         HStack(spacing: 9) {
             Image(systemName: item.icon)
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(Theme.accent)
                 .frame(width: 16)
-            Text(item.title)
-                .foregroundStyle(Theme.textDim)
-            Spacer(minLength: 8)
-            Text(item.value)
-                .font(Theme.mono)
-                .foregroundStyle(Theme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textDim)
+                Text(item.value)
+                    .font(Theme.mono)
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
         }
-        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var activityBlock: some View {
@@ -277,10 +282,10 @@ struct DashboardView: View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 12) {
                 processSection
-                    .frame(minWidth: 500, maxWidth: .infinity)
+                    .frame(minWidth: 360, maxWidth: .infinity)
                     .frame(maxHeight: .infinity, alignment: .top)
                 devServersSection
-                    .frame(minWidth: 290, idealWidth: 330, maxWidth: 380)
+                    .frame(minWidth: 360, maxWidth: .infinity)
                     .frame(maxHeight: .infinity, alignment: .top)
             }
             .fixedSize(horizontal: false, vertical: true)
