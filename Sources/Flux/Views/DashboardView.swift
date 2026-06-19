@@ -1,12 +1,14 @@
 import SwiftUI
+import Charts
 
-/// The main window: a grid of metric cards and a live, sortable process table,
-/// plus a placeholder for the chart that arrives next. Styled with `Theme`
-/// (deep black, mint accents, DM Sans).
+/// The main window: a grid of metric cards, a live CPU chart, and a sortable
+/// process table. Styled with `Theme` (deep black, mint accents, DM Sans).
 struct DashboardView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
     @ObservedObject var history: HistoryStore
+
+    @State private var chartRange: HistoryStore.Range = .fiveMinutes
 
     private let columns = [GridItem(.adaptive(minimum: 160), spacing: 14)]
 
@@ -29,7 +31,7 @@ struct DashboardView: View {
                         metricCard("Uptime", SystemInfo.uptimeText, "clock")
                     }
 
-                    chartPlaceholder
+                    cpuChart
                     processSection
                 }
                 .padding(28)
@@ -72,14 +74,70 @@ struct DashboardView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.border, lineWidth: 1))
     }
 
-    private var chartPlaceholder: some View {
-        surface {
+    private var cpuChart: some View {
+        let data = history.snapshots(in: chartRange)
+        return surface {
             VStack(alignment: .leading, spacing: 12) {
-                Text("CPU OVER TIME").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
-                Text("Live chart arrives next")
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.textDim)
-                    .frame(maxWidth: .infinity, minHeight: 130)
+                HStack {
+                    Text("CPU OVER TIME").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+                    Spacer()
+                    Picker("Range", selection: $chartRange) {
+                        ForEach(HistoryStore.Range.allCases) { range in
+                            Text(range.rawValue).tag(range)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+
+                if data.count < 2 {
+                    Text("Collecting…")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textDim)
+                        .frame(maxWidth: .infinity, minHeight: 150)
+                } else {
+                    Chart(data) { snapshot in
+                        AreaMark(
+                            x: .value("Time", snapshot.timestamp),
+                            y: .value("CPU", snapshot.cpuUsage * 100)
+                        )
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Theme.accent.opacity(0.30), Theme.accent.opacity(0.02)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .interpolationMethod(.monotone)
+
+                        LineMark(
+                            x: .value("Time", snapshot.timestamp),
+                            y: .value("CPU", snapshot.cpuUsage * 100)
+                        )
+                        .foregroundStyle(Theme.accent)
+                        .interpolationMethod(.monotone)
+                        .lineStyle(StrokeStyle(lineWidth: 2))
+                    }
+                    .chartYScale(domain: 0...100)
+                    .chartYAxis {
+                        AxisMarks(position: .leading, values: [0, 50, 100]) {
+                            AxisGridLine().foregroundStyle(Theme.border)
+                            AxisValueLabel()
+                                .foregroundStyle(Theme.textDim)
+                                .font(Theme.font(10, .regular))
+                        }
+                    }
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 4)) {
+                            AxisGridLine().foregroundStyle(Theme.border.opacity(0.6))
+                            AxisValueLabel(format: .dateTime.hour().minute())
+                                .foregroundStyle(Theme.textDim)
+                                .font(Theme.font(10, .regular))
+                        }
+                    }
+                    .frame(height: 160)
+                }
             }
         }
     }
