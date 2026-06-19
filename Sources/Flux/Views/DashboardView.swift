@@ -31,7 +31,7 @@ struct DashboardView: View {
                         metricCard("Uptime", SystemInfo.uptimeText, "clock")
                     }
 
-                    cpuChart
+                    chartsBlock
                     processSection
                 }
                 .padding(28)
@@ -74,12 +74,12 @@ struct DashboardView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.border, lineWidth: 1))
     }
 
-    private var cpuChart: some View {
+    private var chartsBlock: some View {
         let data = history.snapshots(in: chartRange)
         return surface {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("CPU OVER TIME").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+                    Text("ACTIVITY").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
                     Spacer()
                     Picker("Range", selection: $chartRange) {
                         ForEach(HistoryStore.Range.allCases) { range in
@@ -97,49 +97,69 @@ struct DashboardView: View {
                         .foregroundStyle(Theme.textDim)
                         .frame(maxWidth: .infinity, minHeight: 150)
                 } else {
-                    Chart(data) { snapshot in
-                        AreaMark(
-                            x: .value("Time", snapshot.timestamp),
-                            y: .value("CPU", snapshot.cpuUsage * 100)
-                        )
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Theme.accent.opacity(0.30), Theme.accent.opacity(0.02)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .interpolationMethod(.monotone)
-
-                        LineMark(
-                            x: .value("Time", snapshot.timestamp),
-                            y: .value("CPU", snapshot.cpuUsage * 100)
-                        )
-                        .foregroundStyle(Theme.accent)
-                        .interpolationMethod(.monotone)
-                        .lineStyle(StrokeStyle(lineWidth: 2))
+                    miniChart("CPU  ·  %", data, domain: 0...100) { $0.cpuUsage * 100 }
+                    Divider().overlay(Theme.border)
+                    miniChart("MEMORY  ·  %", data, domain: 0...100) { $0.memoryFraction * 100 }
+                    Divider().overlay(Theme.border)
+                    miniChart("NETWORK ↓  ·  MB/s", data, domain: 0...networkMax(data)) {
+                        Double($0.networkDownBytesPerSec) / 1_048_576
                     }
-                    .chartYScale(domain: 0...100)
-                    .chartYAxis {
-                        AxisMarks(position: .leading, values: [0, 50, 100]) {
-                            AxisGridLine().foregroundStyle(Theme.border)
-                            AxisValueLabel()
-                                .foregroundStyle(Theme.textDim)
-                                .font(Theme.font(10, .regular))
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) {
-                            AxisGridLine().foregroundStyle(Theme.border.opacity(0.6))
-                            AxisValueLabel(format: .dateTime.hour().minute())
-                                .foregroundStyle(Theme.textDim)
-                                .font(Theme.font(10, .regular))
-                        }
-                    }
-                    .frame(height: 160)
                 }
             }
         }
+    }
+
+    private func miniChart(
+        _ label: String,
+        _ data: [SystemSnapshot],
+        domain: ClosedRange<Double>,
+        value: @escaping (SystemSnapshot) -> Double
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(Theme.font(11, .medium)).tracking(0.6).foregroundStyle(Theme.textDim)
+            Chart(data) { snapshot in
+                AreaMark(
+                    x: .value("Time", snapshot.timestamp),
+                    y: .value(label, value(snapshot))
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Theme.accent.opacity(0.28), Theme.accent.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.monotone)
+
+                LineMark(
+                    x: .value("Time", snapshot.timestamp),
+                    y: .value(label, value(snapshot))
+                )
+                .foregroundStyle(Theme.accent)
+                .interpolationMethod(.monotone)
+                .lineStyle(StrokeStyle(lineWidth: 1.8))
+            }
+            .chartYScale(domain: domain)
+            .chartYAxis {
+                AxisMarks(position: .leading) {
+                    AxisGridLine().foregroundStyle(Theme.border)
+                    AxisValueLabel().foregroundStyle(Theme.textDim).font(Theme.font(9, .regular))
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 3)) {
+                    AxisGridLine().foregroundStyle(Theme.border.opacity(0.5))
+                    AxisValueLabel(format: .dateTime.hour().minute())
+                        .foregroundStyle(Theme.textDim).font(Theme.font(9, .regular))
+                }
+            }
+            .frame(height: 96)
+        }
+    }
+
+    private func networkMax(_ data: [SystemSnapshot]) -> Double {
+        let peak = data.map { Double($0.networkDownBytesPerSec) / 1_048_576 }.max() ?? 1
+        return Swift.max(1, peak * 1.2)
     }
 
     // MARK: Process table
