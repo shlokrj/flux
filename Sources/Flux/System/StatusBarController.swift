@@ -5,10 +5,13 @@ import SwiftUI
 /// AppKit owns the status item so its title can contain multiple SF Symbol
 /// attachments. SwiftUI's `MenuBarExtra` label keeps only one image/title pair.
 @MainActor
-final class StatusBarController: NSObject, ObservableObject {
+final class StatusBarController: NSObject, ObservableObject, NSWindowDelegate {
     private let statusFontSize = NSFont.systemFontSize
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let popover = NSPopover()
+    private var menuPanel: NSPanel?
+    private var dashboardWindow: NSWindow?
+    private var outsideClickMonitor: Any?
+    private var localClickMonitor: Any?
     private var latestCancellable: AnyCancellable?
     private var isConfigured = false
 
@@ -40,10 +43,13 @@ final class StatusBarController: NSObject, ObservableObject {
             usage: usage,
             openDashboard: { [weak self] in self?.openDashboard() }
         )
-        popover.behavior = .transient
-        popover.animates = true
-        popover.contentSize = NSSize(width: 258, height: 263)
-        popover.contentViewController = NSHostingController(rootView: menu)
+        configureMenuPanel(with: menu)
+
+        // The dashboard task configures this controller, so its NSWindow is in
+        // the application window list on the next run-loop turn.
+        DispatchQueue.main.async { [weak self] in
+            self?.captureDashboardWindow()
+        }
 
         latestCancellable = metrics.$latest.sink { [weak self] snapshot in
             self?.updateStatusItem(with: snapshot)
@@ -51,20 +57,99 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+        guard let panel = menuPanel else { return }
+        if panel.isVisible {
+            closeMenuPanel()
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            showMenuPanel(panel)
         }
     }
 
     private func openDashboard() {
-        popover.performClose(nil)
-        guard let window = NSApp.windows.first(where: { $0.title == "Flux Dashboard" }) else { return }
+        closeMenuPanel()
+        if dashboardWindow == nil {
+            captureDashboardWindow()
+        }
+        guard let window = dashboardWindow else { return }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === dashboardWindow else { return true }
+        sender.orderOut(nil)
+        return false
+    }
+
+    private func captureDashboardWindow() {
+        let dashboards = NSApp.windows.filter { $0.title == "Flux Dashboard" }
+        guard let primary = dashboards.first(where: { $0.isKeyWindow }) ?? dashboards.first else { return }
+
+        dashboardWindow = primary
+        primary.delegate = self
+        primary.isReleasedWhenClosed = false
+
+        // Clean up any duplicates created before the singleton behavior was
+        // installed. Future duplicates are prevented by the app command set.
+        for duplicate in dashboards where duplicate !== primary {
+            duplicate.orderOut(nil)
+            duplicate.close()
+        }
+    }
+
+    private func configureMenuPanel(with menu: MenuBarView) {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 258, height: 263),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.contentViewController = NSHostingController(rootView: menu)
+        panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        menuPanel = panel
+    }
+
+    private func showMenuPanel(_ panel: NSPanel) {
+        guard let button = statusItem.button, let statusWindow = button.window else { return }
+
+        let buttonRect = statusWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let panelSize = panel.frame.size
+        let visibleFrame = statusWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+        let unclampedX = buttonRect.midX - panelSize.width / 2
+        let x = min(max(unclampedX, visibleFrame.minX + 8), visibleFrame.maxX - panelSize.width - 8)
+        let y = buttonRect.minY - panelSize.height - 6
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        panel.orderFrontRegardless()
+
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in self?.closeMenuPanel() }
+        }
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            let statusWindow = self.statusItem.button?.window
+            if event.window !== self.menuPanel, event.window !== statusWindow {
+                self.closeMenuPanel()
+            }
+            return event
+        }
+    }
+
+    private func closeMenuPanel() {
+        menuPanel?.orderOut(nil)
+        if let outsideClickMonitor {
+            NSEvent.removeMonitor(outsideClickMonitor)
+            self.outsideClickMonitor = nil
+        }
+        if let localClickMonitor {
+            NSEvent.removeMonitor(localClickMonitor)
+            self.localClickMonitor = nil
+        }
     }
 
     private func updateStatusItem(with snapshot: SystemSnapshot?) {

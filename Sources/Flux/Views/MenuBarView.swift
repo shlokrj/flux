@@ -34,6 +34,7 @@ struct MenuBarView: View {
         .padding(12)
         .frame(width: 258)
         .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
         .task {
