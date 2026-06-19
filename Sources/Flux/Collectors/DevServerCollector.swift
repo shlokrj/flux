@@ -31,9 +31,12 @@ final class DevServerCollector: ObservableObject {
     }
 
     func refresh() {
-        Task.detached(priority: .utility) { [weak self] in
-            let servers = PortScanner.listeningServers()
-            await MainActor.run { self?.servers = servers }
+        // Inherit the main actor here; run only the blocking scan off-main.
+        Task {
+            let servers = await Task.detached(priority: .utility) {
+                PortScanner.listeningServers()
+            }.value
+            self.servers = servers
         }
     }
 }
