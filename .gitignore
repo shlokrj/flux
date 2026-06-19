@@ -1,0 +1,22 @@
+# ---- Planning / scratch docs (local only) ----
+spec.md
+skills.md
+agents.md
+
+# ---- macOS ----
+.DS_Store
+
+# ---- Swift Package Manager ----
+.build/
+.swiftpm/
+Package.resolved
+
+# ---- Xcode ----
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# ---- Claude Code ----
+.claude/settings.local.json
