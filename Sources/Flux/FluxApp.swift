@@ -16,8 +16,7 @@ struct FluxApp: App {
         MenuBarExtra {
             MenuBarView(metrics: metrics, processes: processes)
         } label: {
-            // TODO(phase1): render live "CPU x% · RAM y%" text in the menu bar.
-            Image(systemName: "gauge.with.dots.needle.bottom.50percent")
+            MenuBarLabel(metrics: metrics)
         }
         .menuBarExtraStyle(.window)
 

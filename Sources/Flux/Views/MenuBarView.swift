@@ -1,6 +1,25 @@
 import SwiftUI
 import AppKit
 
+/// The text shown in the menu bar itself: live CPU and RAM. This view is always
+/// present once the app launches, so it also kicks off metric sampling.
+struct MenuBarLabel: View {
+    @ObservedObject var metrics: MetricsCollector
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "gauge.medium")
+            Text(text)
+        }
+        .task { metrics.start() }
+    }
+
+    private var text: String {
+        guard let latest = metrics.latest else { return "Flux" }
+        return "\(latest.cpuPercentText) · \(latest.memoryPercentText)"
+    }
+}
+
 /// The dropdown panel shown when the menu bar item is clicked: a compact
 /// overview plus actions.
 struct MenuBarView: View {

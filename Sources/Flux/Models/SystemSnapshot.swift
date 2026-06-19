@@ -61,6 +61,10 @@ extension SystemSnapshot {
         "\(Int((cpuUsage * 100).rounded()))%"
     }
 
+    var memoryPercentText: String {
+        "\(Int((memoryFraction * 100).rounded()))%"
+    }
+
     /// e.g. `"8.4 / 16.0 GB"`.
     var memoryText: String {
         let gb = 1_073_741_824.0
