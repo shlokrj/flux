@@ -82,14 +82,14 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func symbol(_ name: String, description: String) -> NSAttributedString {
-        let configuration = NSImage.SymbolConfiguration(pointSize: statusFontSize, weight: .medium)
+        let configuration = NSImage.SymbolConfiguration(pointSize: statusFontSize, weight: .regular)
         let image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
             .withSymbolConfiguration(configuration)
         image?.isTemplate = true
 
         let attachment = NSTextAttachment()
         attachment.image = image
-        attachment.bounds = NSRect(x: 0, y: -3, width: 15, height: 15)
+        attachment.bounds = NSRect(x: 0, y: -2, width: 14, height: 14)
         return NSAttributedString(attachment: attachment)
     }
 
@@ -97,7 +97,7 @@ final class StatusBarController: NSObject, ObservableObject {
         NSAttributedString(
             string: text,
             attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: statusFontSize, weight: .medium),
+                .font: NSFont.menuBarFont(ofSize: 0),
                 .foregroundColor: NSColor.labelColor
             ]
         )
