@@ -18,6 +18,7 @@ final class MetricsCollector: ObservableObject {
     private var cpu = CPUReader()
     private let memory = MemoryReader()
     private let battery = BatteryReader()
+    private var network = NetworkReader()
 
     init(interval: TimeInterval = 2) {
         self.interval = interval
@@ -37,13 +38,15 @@ final class MetricsCollector: ObservableObject {
         timer = nil
     }
 
-    /// TODO(phase1): wire up network reads next.
     private func sample() {
+        let net = network.sample()
         latest = SystemSnapshot(
             cpuUsage: cpu.sample(),
             memoryUsed: memory.usedBytes(),
             memoryTotal: memory.total,
-            batteryLevel: battery.level()
+            batteryLevel: battery.level(),
+            networkDownBytesPerSec: net.down,
+            networkUpBytesPerSec: net.up
         )
     }
 }
