@@ -1,18 +1,18 @@
 import SwiftUI
 
-/// Flux's visual language: native macOS surfaces and typography with a single
-/// mint accent. Semantic system text styles keep the hierarchy feeling at home
-/// on macOS and continue to respond to accessibility text-size preferences.
+/// Flux's visual language: quiet black surfaces, native macOS typography, and
+/// a single mint accent. Semantic system text styles keep the hierarchy feeling
+/// at home on macOS and continue to respond to accessibility text-size preferences.
 ///
 /// Everything visual routes through here so the look can be tuned in one place
 /// (e.g. flipping to a light base later is a handful of edits).
 enum Theme {
     // MARK: Palette
 
-    static let background = Color(nsColor: .windowBackgroundColor)
-    static let surface = Color(nsColor: .controlBackgroundColor)
-    static let surfaceRaised = Color(nsColor: .textBackgroundColor)
-    static let border = Color(nsColor: .separatorColor)
+    static let background = Color.black
+    static let surface = Color(hex: 0x0C0C0D)
+    static let surfaceRaised = Color(hex: 0x141416)
+    static let border = Color.white.opacity(0.09)
 
     static let text = Color.primary
     static let textDim = Color.secondary

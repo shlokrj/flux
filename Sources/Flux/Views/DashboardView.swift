@@ -4,6 +4,22 @@ import Charts
 /// The main window: live metrics, activity charts, a derived timeline, app
 /// usage, running processes, and local development servers.
 struct DashboardView: View {
+    private enum ActivityMetric: String, CaseIterable, Identifiable {
+        case cpu = "CPU"
+        case memory = "Memory"
+        case network = "Network"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .cpu: return "cpu"
+            case .memory: return "memorychip"
+            case .network: return "arrow.down"
+            }
+        }
+    }
+
     private struct MetricItem: Identifiable {
         let title: String
         let value: String
@@ -20,23 +36,20 @@ struct DashboardView: View {
     @ObservedObject var devServers: DevServerCollector
 
     @State private var chartRange: HistoryStore.Range = .fiveMinutes
+    @State private var activityMetric: ActivityMetric = .cpu
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 14) {
                     header
-                    metricsGrid
-
-                    chartsBlock
+                    overviewRow
                     insightsRow
-                    processSection
-                    devServersSection
+                    detailsRow
                 }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 24)
+                .padding(20)
                 .font(Theme.body)
                 .foregroundStyle(Theme.text)
             }
@@ -52,17 +65,12 @@ struct DashboardView: View {
         .onDisappear { devServers.stop() }
     }
 
-    // MARK: Cards
+    // MARK: Overview
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Flux")
-                    .font(Theme.display)
-                Text("A live view of your Mac")
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.textDim)
-            }
+        HStack(alignment: .center) {
+            Text("Flux")
+                .font(.system(.title2, design: .default, weight: .semibold))
 
             Spacer()
 
@@ -73,21 +81,6 @@ struct DashboardView: View {
                 Text("Live")
                     .font(Theme.secondary.weight(.medium))
                     .foregroundStyle(Theme.textDim)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Theme.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-        }
-    }
-
-    private var metricsGrid: some View {
-        ViewThatFits(in: .horizontal) {
-            metricRow(metricItems)
-
-            VStack(spacing: 12) {
-                metricRow(Array(metricItems.prefix(3)))
-                metricRow(Array(metricItems.suffix(3)))
             }
         }
     }
@@ -103,45 +96,62 @@ struct DashboardView: View {
         ]
     }
 
-    private func metricRow(_ items: [MetricItem]) -> some View {
-        HStack(spacing: 12) {
-            ForEach(items) { item in
-                metricCard(item)
+    private var overviewRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                systemSummary
+                    .frame(minWidth: 260, idealWidth: 280, maxWidth: 300)
+                activityBlock
+                    .frame(minWidth: 420, maxWidth: .infinity)
+            }
+
+            VStack(spacing: 12) {
+                systemSummary
+                activityBlock
             }
         }
     }
 
-    private func metricCard(_ item: MetricItem) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 7) {
-                Image(systemName: item.icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 16)
-                Text(item.title)
-                    .font(Theme.label)
-                    .foregroundStyle(Theme.textDim)
+    private var systemSummary: some View {
+        surface {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("System", icon: "gauge.with.dots.needle.50percent")
+
+                VStack(spacing: 0) {
+                    ForEach(Array(metricItems.enumerated()), id: \.element.id) { index, item in
+                        metricRow(item)
+
+                        if index < metricItems.count - 1 {
+                            Divider().overlay(Theme.border.opacity(0.7))
+                        }
+                    }
+                }
             }
+        }
+    }
 
-            Spacer(minLength: 0)
-
+    private func metricRow(_ item: MetricItem) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: item.icon)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 16)
+            Text(item.title)
+                .foregroundStyle(Theme.textDim)
+            Spacer(minLength: 8)
             Text(item.value)
-                .font(Theme.metric)
+                .font(Theme.mono)
                 .foregroundStyle(Theme.text)
-                .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.65)
+                .minimumScaleFactor(0.72)
         }
-        .padding(16)
-        .frame(minWidth: 150, maxWidth: .infinity, minHeight: 112, maxHeight: 112, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(.vertical, 7)
     }
 
-    private var chartsBlock: some View {
+    private var activityBlock: some View {
         let data = history.snapshots(in: chartRange)
         return surface {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("Activity", icon: "chart.xyaxis.line") {
                     Picker("Range", selection: $chartRange) {
                         ForEach(HistoryStore.Range.allCases) { range in
@@ -149,66 +159,36 @@ struct DashboardView: View {
                         }
                     }
                     .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .frame(width: 300)
+                    .pickerStyle(.menu)
+                    .fixedSize()
                 }
+
+                Picker("Metric", selection: $activityMetric) {
+                    ForEach(ActivityMetric.allCases) { metric in
+                        Label(metric.rawValue, systemImage: metric.icon).tag(metric)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
 
                 if data.count < 2 {
                     emptyState("Collecting system activity…", icon: "waveform.path.ecg")
-                        .frame(minHeight: 180)
+                        .frame(height: 180)
                 } else {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .top, spacing: 12) {
-                            activityCharts(data)
-                        }
-
-                        VStack(spacing: 12) {
-                            activityCharts(data)
-                        }
-                    }
+                    activityChart(data)
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private func activityCharts(_ data: [SystemSnapshot]) -> some View {
-        miniChart(
-            "CPU",
-            current: metrics.latest?.cpuPercentText ?? "—",
-            data,
-            domain: 0...100
-        ) { $0.cpuUsage * 100 }
-
-        miniChart(
-            "Memory",
-            current: "\(Int((metrics.latest?.memoryFraction ?? 0) * 100))%",
-            data,
-            domain: 0...100
-        ) { $0.memoryFraction * 100 }
-
-        miniChart(
-            "Network down",
-            current: metrics.latest?.networkText.components(separatedBy: " ").prefix(3).joined(separator: " ") ?? "—",
-            data,
-            domain: 0...networkMax(data)
-        ) { Double($0.networkDownBytesPerSec) / 1_048_576 }
-    }
-
-    private func miniChart(
-        _ label: String,
-        current: String,
-        _ data: [SystemSnapshot],
-        domain: ClosedRange<Double>,
-        value: @escaping (SystemSnapshot) -> Double
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func activityChart(_ data: [SystemSnapshot]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(label)
+                Text(activityMetric.rawValue)
                     .font(Theme.label)
                     .foregroundStyle(Theme.textDim)
                 Spacer()
-                Text(current)
+                Text(activityCurrentText)
                     .font(Theme.mono.weight(.medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
@@ -218,7 +198,7 @@ struct DashboardView: View {
             Chart(data) { snapshot in
                 AreaMark(
                     x: .value("Time", snapshot.timestamp),
-                    y: .value(label, value(snapshot))
+                    y: .value(activityMetric.rawValue, activityValue(snapshot))
                 )
                 .foregroundStyle(
                     LinearGradient(
@@ -231,13 +211,13 @@ struct DashboardView: View {
 
                 LineMark(
                     x: .value("Time", snapshot.timestamp),
-                    y: .value(label, value(snapshot))
+                    y: .value(activityMetric.rawValue, activityValue(snapshot))
                 )
                 .foregroundStyle(Theme.accent)
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
-            .chartYScale(domain: domain)
+            .chartYScale(domain: activityDomain(data))
             .chartYAxis {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) {
                     AxisGridLine().foregroundStyle(Theme.border.opacity(0.7))
@@ -252,12 +232,35 @@ struct DashboardView: View {
                 }
             }
             .chartXScale(range: .plotDimension(padding: 6))
-            .frame(height: 132)
+            .frame(height: 160)
         }
-        .padding(14)
-        .frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surfaceRaised.opacity(0.55), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.border.opacity(0.7), lineWidth: 1))
+        .padding(.top, 2)
+    }
+
+    private var activityCurrentText: String {
+        switch activityMetric {
+        case .cpu:
+            return metrics.latest?.cpuPercentText ?? "—"
+        case .memory:
+            return "\(Int((metrics.latest?.memoryFraction ?? 0) * 100))%"
+        case .network:
+            return metrics.latest?.networkText.components(separatedBy: " ").prefix(3).joined(separator: " ") ?? "—"
+        }
+    }
+
+    private func activityValue(_ snapshot: SystemSnapshot) -> Double {
+        switch activityMetric {
+        case .cpu: return snapshot.cpuUsage * 100
+        case .memory: return snapshot.memoryFraction * 100
+        case .network: return Double(snapshot.networkDownBytesPerSec) / 1_048_576
+        }
+    }
+
+    private func activityDomain(_ data: [SystemSnapshot]) -> ClosedRange<Double> {
+        switch activityMetric {
+        case .cpu, .memory: return 0...100
+        case .network: return 0...networkMax(data)
+        }
     }
 
     private func networkMax(_ data: [SystemSnapshot]) -> Double {
@@ -267,9 +270,25 @@ struct DashboardView: View {
 
     // MARK: Process table
 
+    private var detailsRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                processSection
+                    .frame(minWidth: 500, maxWidth: .infinity)
+                devServersSection
+                    .frame(minWidth: 290, idealWidth: 330, maxWidth: 380)
+            }
+
+            VStack(spacing: 12) {
+                processSection
+                devServersSection
+            }
+        }
+    }
+
     private var processSection: some View {
         surface {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("Top processes", icon: "list.bullet.rectangle") {
                     Picker("Sort", selection: $processes.sortKey) {
                         ForEach(ProcessCollector.SortKey.allCases) { key in
@@ -289,7 +308,7 @@ struct DashboardView: View {
                         emptyState("Sampling running processes…", icon: "gearshape.2")
                             .frame(minHeight: 100)
                     } else {
-                        ForEach(processes.sorted.prefix(12)) { process in
+                        ForEach(processes.sorted.prefix(8)) { process in
                             Divider().overlay(Theme.border.opacity(0.6))
                             processRow(
                                 process.name,
@@ -324,27 +343,28 @@ struct DashboardView: View {
                 .foregroundStyle(header ? Theme.textDim : Theme.text)
                 .frame(width: 96, alignment: .trailing)
         }
-        .padding(.vertical, header ? 4 : 9)
+        .padding(.vertical, header ? 3 : 7)
     }
 
     // MARK: Dev servers
 
     private var devServersSection: some View {
-        surface {
-            VStack(alignment: .leading, spacing: 16) {
+        let servers = Array(devServers.servers.prefix(6))
+        return surface {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("Development servers", icon: "server.rack")
 
-                if devServers.servers.isEmpty {
+                if servers.isEmpty {
                     emptyState("No local servers are listening", icon: "network.slash")
-                        .frame(minHeight: 90)
+                        .frame(minHeight: 72)
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(devServers.servers) { server in
-                            HStack(spacing: 12) {
+                        ForEach(servers) { server in
+                            HStack(spacing: 9) {
                                 Text(":\(String(server.port))")
                                     .font(Theme.mono)
                                     .foregroundStyle(Theme.accent)
-                                    .frame(width: 70, alignment: .leading)
+                                    .frame(width: 58, alignment: .leading)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(server.command)
                                         .font(Theme.body)
@@ -362,13 +382,10 @@ struct DashboardView: View {
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                Text("pid \(String(server.pid))")
-                                    .font(Theme.mono)
-                                    .foregroundStyle(Theme.textDim)
                             }
-                            .padding(.vertical, 9)
+                            .padding(.vertical, 7)
 
-                            if server.id != devServers.servers.last?.id {
+                            if server.id != servers.last?.id {
                                 Divider().overlay(Theme.border.opacity(0.6))
                             }
                         }
@@ -396,7 +413,7 @@ struct DashboardView: View {
 
     private var timelineSection: some View {
         surface {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("Timeline", icon: "clock.arrow.circlepath")
 
                 if timeline.events.isEmpty {
@@ -404,10 +421,10 @@ struct DashboardView: View {
                         "Notable CPU, memory, battery, and network changes will appear here.",
                         icon: "sparkles"
                     )
-                    .frame(minHeight: 100)
+                    .frame(minHeight: 72)
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(timeline.events.prefix(10)) { event in
+                        ForEach(timeline.events.prefix(6)) { event in
                             HStack(spacing: 10) {
                                 Image(systemName: icon(for: event.kind))
                                     .font(.system(size: 12))
@@ -420,9 +437,9 @@ struct DashboardView: View {
                                 }
                                 Spacer()
                             }
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 6)
 
-                            if event.id != timeline.events.prefix(10).last?.id {
+                            if event.id != timeline.events.prefix(6).last?.id {
                                 Divider().overlay(Theme.border.opacity(0.6))
                             }
                         }
@@ -448,16 +465,16 @@ struct DashboardView: View {
     private var usageSection: some View {
         let items = history.usageToday(including: usage.current)
         return surface {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("Today's app usage", icon: "hourglass")
 
                 if items.isEmpty {
                     emptyState("App activity will appear as you work", icon: "app.dashed")
-                        .frame(minHeight: 100)
+                        .frame(minHeight: 72)
                 } else {
                     let peak = items.first?.duration ?? 1
-                    VStack(spacing: 12) {
-                        ForEach(items.prefix(8)) { item in
+                    VStack(spacing: 9) {
+                        ForEach(items.prefix(6)) { item in
                             usageRow(item, peak: peak)
                         }
                     }
@@ -481,7 +498,7 @@ struct DashboardView: View {
                         .frame(width: geo.size.width * CGFloat(item.duration / max(1, peak)))
                 }
             }
-            .frame(height: 4)
+            .frame(height: 3)
         }
     }
 
@@ -509,9 +526,9 @@ struct DashboardView: View {
     }
 
     private func emptyState(_ message: String, icon: String) -> some View {
-        VStack(spacing: 9) {
+        VStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.system(size: 19, weight: .regular))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(Theme.accent.opacity(0.8))
             Text(message)
                 .font(Theme.body)
@@ -523,9 +540,9 @@ struct DashboardView: View {
 
     private func surface<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
-            .padding(18)
+            .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
     }
 }
