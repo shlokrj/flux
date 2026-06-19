@@ -76,12 +76,21 @@ extension SystemSnapshot {
         return "\(Int((batteryLevel * 100).rounded()))%"
     }
 
+    var networkDownText: String {
+        Self.networkRateText(networkDownBytesPerSec)
+    }
+
+    var networkUpText: String {
+        Self.networkRateText(networkUpBytesPerSec)
+    }
+
     /// e.g. `"↓ 12.0 MB/s  ↑ 1.4 MB/s"`.
     var networkText: String {
-        func rate(_ bytes: UInt64) -> String {
-            let mb = Double(bytes) / 1_048_576.0
-            return String(format: "%.1f MB/s", mb)
-        }
-        return "↓ \(rate(networkDownBytesPerSec))  ↑ \(rate(networkUpBytesPerSec))"
+        "↓ \(networkDownText)  ↑ \(networkUpText)"
+    }
+
+    private static func networkRateText(_ bytes: UInt64) -> String {
+        let mb = Double(bytes) / 1_048_576.0
+        return String(format: "%.1f MB/s", mb)
     }
 }
