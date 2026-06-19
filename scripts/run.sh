@@ -2,7 +2,7 @@
 #
 # Builds Flux and wraps the SPM binary in a minimal .app bundle so the menu bar
 # item actually shows up, then launches it. A menu bar app needs an app bundle
-# with LSUIElement set — `swift run` alone won't cut it.
+# with LSUIElement set - `swift run` alone won't cut it.
 #
 # Usage: ./scripts/run.sh [debug|release]   (default: debug)
 set -euo pipefail
@@ -10,13 +10,13 @@ cd "$(dirname "$0")/.."
 
 CONFIG="${1:-debug}"
 
-echo "building Flux ($CONFIG)…"
+echo "building Flux ($CONFIG)..."
 swift build -c "$CONFIG"
 
 BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
 APP=".build/Flux.app"
 
-echo "packaging $APP…"
+echo "packaging ${APP}..."
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BIN_DIR/Flux" "$APP/Contents/MacOS/Flux"
@@ -41,5 +41,5 @@ PLIST
 # Relaunch cleanly if a previous instance is running.
 killall Flux 2>/dev/null || true
 
-echo "launching Flux — look for the gauge in your menu bar (top-right)."
+echo "launching Flux - look for the gauge in your menu bar (top-right)."
 open "$APP"
