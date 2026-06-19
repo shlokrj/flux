@@ -31,20 +31,28 @@ struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("FLUX")
+                .font(Theme.font(12, .medium))
+                .tracking(3)
+                .foregroundStyle(Theme.accent)
+                .padding(.bottom, 12)
+
             row("CPU", metrics.latest?.cpuPercentText ?? "—")
             row("Memory", metrics.latest?.memoryText ?? "—")
             row("Battery", metrics.latest?.batteryText ?? "—")
             row("Network", metrics.latest?.networkText ?? "—")
-            row("Top App", metrics.latest?.activeAppBundleID ?? "—")
 
-            Divider()
+            Divider().overlay(Theme.border).padding(.vertical, 10)
 
-            Button("Open Dashboard") { openWindow(id: "dashboard") }
-            Button("Quit Flux") { NSApplication.shared.terminate(nil) }
+            menuButton("Open Dashboard", "rectangle.on.rectangle") { openWindow(id: "dashboard") }
+            menuButton("Quit Flux", "power") { NSApplication.shared.terminate(nil) }
         }
-        .padding(12)
-        .frame(width: 260)
+        .padding(14)
+        .frame(width: 250)
+        .background(Theme.background)
+        .tint(Theme.accent)
+        .preferredColorScheme(.dark)
         .task {
             metrics.start()
             processes.start()
@@ -53,9 +61,23 @@ struct MenuBarView: View {
 
     private func row(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
+            Text(label).font(Theme.body).foregroundStyle(Theme.textDim)
             Spacer()
-            Text(value).monospacedDigit()
+            Text(value).font(Theme.mono).foregroundStyle(Theme.text)
         }
+        .padding(.vertical, 3)
+    }
+
+    private func menuButton(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.system(size: 12)).foregroundStyle(Theme.accent)
+                Text(title).font(Theme.body).foregroundStyle(Theme.text)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
     }
 }
