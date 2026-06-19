@@ -18,11 +18,8 @@ APP=".build/Flux.app"
 
 echo "packaging $APP…"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS"
 cp "$BIN_DIR/Flux" "$APP/Contents/MacOS/Flux"
-
-# Ship SPM resource bundles (bundled fonts, etc.) so Bundle.module resolves.
-cp -R "$BIN_DIR"/*.bundle "$APP/Contents/Resources/" 2>/dev/null || true
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

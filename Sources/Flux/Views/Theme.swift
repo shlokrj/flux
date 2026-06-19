@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Flux's visual language: a deep-black dark surface, near-white text, and mint
-/// green accents, set in DM Sans at deliberately light weights for a modern,
-/// airy feel.
+/// green accents, set in the system font (San Francisco) at deliberately light
+/// weights for a modern, airy feel.
 ///
 /// Everything visual routes through here so the look can be tuned in one place
 /// (e.g. flipping to a light base later is a handful of edits).
@@ -22,12 +22,10 @@ enum Theme {
     /// Mint green — the single accent.
     static let accent = Color(hex: 0xADEBB3)
 
-    // MARK: Type — DM Sans, kept light
-
-    static let family = "DM Sans"
+    // MARK: Type — system font (San Francisco), kept light
 
     static func font(_ size: CGFloat, _ weight: Font.Weight = .light) -> Font {
-        .custom(family, size: size).weight(weight)
+        .system(size: size, weight: weight)
     }
 
     /// Big, airy headline (e.g. the window title).
