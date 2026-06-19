@@ -48,6 +48,11 @@ final class ProcessCollector: ObservableObject {
         processes = reader.sample()
     }
 
+    /// The single highest-CPU process, regardless of the current sort.
+    var topByCPU: ProcessSnapshot? {
+        processes.max { $0.cpuUsage < $1.cpuUsage }
+    }
+
     /// `processes` ordered by the current `sortKey`.
     var sorted: [ProcessSnapshot] {
         switch sortKey {

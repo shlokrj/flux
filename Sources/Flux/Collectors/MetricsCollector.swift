@@ -25,8 +25,19 @@ final class MetricsCollector: ObservableObject {
     private weak var history: HistoryStore?
     private weak var timeline: TimelineEngine?
 
+    // Data sources used to annotate each snapshot with context.
+    private weak var processes: ProcessCollector?
+    private weak var usage: AppUsageTracker?
+
     init(interval: TimeInterval = 2) {
         self.interval = interval
+    }
+
+    /// Attach the collectors used to annotate snapshots with the active app and
+    /// top process (for history + timeline attribution).
+    func attachSources(processes: ProcessCollector, usage: AppUsageTracker) {
+        self.processes = processes
+        self.usage = usage
     }
 
     /// Begin sampling. Safe to call repeatedly — it restarts the timer. Pass a
@@ -56,7 +67,9 @@ final class MetricsCollector: ObservableObject {
             memoryTotal: memory.total,
             batteryLevel: battery.level(),
             networkDownBytesPerSec: net.down,
-            networkUpBytesPerSec: net.up
+            networkUpBytesPerSec: net.up,
+            activeAppBundleID: usage?.current?.bundleID,
+            topProcessName: processes?.topByCPU?.name
         )
         latest = snapshot
         history?.record(snapshot)

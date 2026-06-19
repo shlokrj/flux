@@ -17,7 +17,7 @@ struct FluxApp: App {
         MenuBarExtra {
             MenuBarView(metrics: metrics, processes: processes, usage: usage)
         } label: {
-            MenuBarLabel(metrics: metrics, history: history, usage: usage, timeline: timeline)
+            MenuBarLabel(metrics: metrics, processes: processes, history: history, usage: usage, timeline: timeline)
         }
         .menuBarExtraStyle(.window)
 

@@ -5,6 +5,7 @@ import AppKit
 /// present once the app launches, so it also kicks off metric sampling.
 struct MenuBarLabel: View {
     @ObservedObject var metrics: MetricsCollector
+    var processes: ProcessCollector
     var history: HistoryStore
     var usage: AppUsageTracker
     var timeline: TimelineEngine
@@ -15,12 +16,14 @@ struct MenuBarLabel: View {
             Text(text)
         }
         // Always present once the app launches, so this is where sampling,
-        // history recording, timeline analysis, and app-usage tracking kick off
-        // (whether or not the dashboard is open).
+        // history recording, timeline analysis, process enumeration, and
+        // app-usage tracking kick off (whether or not the dashboard is open).
         .task {
             timeline.attach(history)
-            metrics.start(recording: history, timeline: timeline)
             usage.start(recording: history)
+            processes.start()
+            metrics.attachSources(processes: processes, usage: usage)
+            metrics.start(recording: history, timeline: timeline)
         }
     }
 
