@@ -15,6 +15,8 @@ final class MetricsCollector: ObservableObject {
     private let interval: TimeInterval
     private var timer: Timer?
 
+    private var cpu = CPUReader()
+
     init(interval: TimeInterval = 2) {
         self.interval = interval
     }
@@ -33,10 +35,10 @@ final class MetricsCollector: ObservableObject {
         timer = nil
     }
 
-    /// TODO(phase1): replace placeholders with real CPU/memory/battery/network reads.
+    /// TODO(phase1): wire up memory/battery/network reads next.
     private func sample() {
         latest = SystemSnapshot(
-            cpuUsage: 0,
+            cpuUsage: cpu.sample(),
             memoryUsed: 0,
             memoryTotal: ProcessInfo.processInfo.physicalMemory
         )
