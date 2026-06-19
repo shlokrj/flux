@@ -5,13 +5,16 @@ import AppKit
 /// present once the app launches, so it also kicks off metric sampling.
 struct MenuBarLabel: View {
     @ObservedObject var metrics: MetricsCollector
+    var history: HistoryStore
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "gauge.medium")
             Text(text)
         }
-        .task { metrics.start() }
+        // Always present once the app launches, so this is where sampling +
+        // history recording kick off (whether or not the dashboard is open).
+        .task { metrics.start(recording: history) }
     }
 
     private var text: String {

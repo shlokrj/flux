@@ -20,12 +20,19 @@ final class MetricsCollector: ObservableObject {
     private let battery = BatteryReader()
     private var network = NetworkReader()
 
+    /// Where each sample is persisted, if attached. Weak: the store is owned by
+    /// the app for its whole lifetime.
+    private weak var history: HistoryStore?
+
     init(interval: TimeInterval = 2) {
         self.interval = interval
     }
 
-    /// Begin sampling. Safe to call repeatedly — it restarts the timer.
-    func start() {
+    /// Begin sampling. Safe to call repeatedly — it restarts the timer. Pass a
+    /// `HistoryStore` once (e.g. at launch) to start persisting samples; later
+    /// calls without one keep recording to the same store.
+    func start(recording history: HistoryStore? = nil) {
+        if let history { self.history = history }
         stop()
         sample()
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -40,7 +47,7 @@ final class MetricsCollector: ObservableObject {
 
     private func sample() {
         let net = network.sample()
-        latest = SystemSnapshot(
+        let snapshot = SystemSnapshot(
             cpuUsage: cpu.sample(),
             memoryUsed: memory.usedBytes(),
             memoryTotal: memory.total,
@@ -48,5 +55,7 @@ final class MetricsCollector: ObservableObject {
             networkDownBytesPerSec: net.down,
             networkUpBytesPerSec: net.up
         )
+        latest = snapshot
+        history?.record(snapshot)
     }
 }
