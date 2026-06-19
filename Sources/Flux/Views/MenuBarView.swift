@@ -11,21 +11,11 @@ struct MenuBarLabel: View {
     var timeline: TimelineEngine
 
     var body: some View {
-        Group {
-            if let snapshot = metrics.latest {
-                HStack(spacing: 4) {
-                    Image(systemName: "cpu")
-                    Text(snapshot.cpuPercentText)
-                    Image(systemName: "memorychip")
-                        .padding(.leading, 2)
-                    Text(snapshot.memoryPercentText)
-                }
-                .font(.system(size: 12, weight: .medium, design: .default))
-                .monospacedDigit()
-            } else {
-                Text("Flux")
-            }
-        }
+        statusText
+        .font(.system(size: 11, weight: .medium, design: .default))
+        .monospacedDigit()
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(statusAccessibilityLabel)
         // Always present once the app launches, so this is where sampling,
         // history recording, timeline analysis, process enumeration, and
         // app-usage tracking kick off (whether or not the dashboard is open).
@@ -36,6 +26,20 @@ struct MenuBarLabel: View {
             metrics.attachSources(processes: processes, usage: usage)
             metrics.start(recording: history, timeline: timeline)
         }
+    }
+
+    /// Keep the status item as one attributed label. `MenuBarExtra` can clip
+    /// later children in an `HStack`, while a single `Text` receives one stable
+    /// intrinsic width from AppKit.
+    private var statusText: Text {
+        Text(Image(systemName: "cpu"))
+            + Text(" \(metrics.latest?.cpuPercentText ?? "—")  ")
+            + Text(Image(systemName: "memorychip"))
+            + Text(" \(metrics.latest?.memoryPercentText ?? "—")")
+    }
+
+    private var statusAccessibilityLabel: String {
+        "CPU \(metrics.latest?.cpuPercentText ?? "unavailable"), memory \(metrics.latest?.memoryPercentText ?? "unavailable")"
     }
 }
 
