@@ -81,6 +81,10 @@ final class StatusBarController: NSObject, ObservableObject, NSWindowDelegate {
         return false
     }
 
+    @objc private func hideDashboard(_ sender: Any?) {
+        dashboardWindow?.orderOut(nil)
+    }
+
     private func captureDashboardWindow() {
         let dashboards = NSApp.windows.filter { $0.title == "Flux Dashboard" }
         guard let primary = dashboards.first(where: { $0.isKeyWindow }) ?? dashboards.first else { return }
@@ -88,6 +92,10 @@ final class StatusBarController: NSObject, ObservableObject, NSWindowDelegate {
         dashboardWindow = primary
         primary.delegate = self
         primary.isReleasedWhenClosed = false
+        if let closeButton = primary.standardWindowButton(.closeButton) {
+            closeButton.target = self
+            closeButton.action = #selector(hideDashboard(_:))
+        }
 
         // Clean up any duplicates created before the singleton behavior was
         // installed. Future duplicates are prevented by the app command set.
