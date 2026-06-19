@@ -6,15 +6,20 @@ import AppKit
 struct MenuBarLabel: View {
     @ObservedObject var metrics: MetricsCollector
     var history: HistoryStore
+    var usage: AppUsageTracker
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "gauge.medium")
             Text(text)
         }
-        // Always present once the app launches, so this is where sampling +
-        // history recording kick off (whether or not the dashboard is open).
-        .task { metrics.start(recording: history) }
+        // Always present once the app launches, so this is where sampling,
+        // history recording, and app-usage tracking kick off (whether or not
+        // the dashboard is open).
+        .task {
+            metrics.start(recording: history)
+            usage.start()
+        }
     }
 
     private var text: String {
@@ -28,6 +33,7 @@ struct MenuBarLabel: View {
 struct MenuBarView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
+    @ObservedObject var usage: AppUsageTracker
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -42,6 +48,13 @@ struct MenuBarView: View {
             row("Memory", metrics.latest?.memoryText ?? "—")
             row("Battery", metrics.latest?.batteryText ?? "—")
             row("Network", metrics.latest?.networkText ?? "—")
+
+            HStack {
+                Text("Active").font(Theme.body).foregroundStyle(Theme.textDim)
+                Spacer()
+                Text(usage.current?.appName ?? "—").font(Theme.body).foregroundStyle(Theme.text).lineLimit(1)
+            }
+            .padding(.vertical, 3)
 
             Divider().overlay(Theme.border).padding(.vertical, 10)
 

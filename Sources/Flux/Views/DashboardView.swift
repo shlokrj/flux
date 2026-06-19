@@ -7,6 +7,7 @@ struct DashboardView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
     @ObservedObject var history: HistoryStore
+    @ObservedObject var usage: AppUsageTracker
 
     @State private var chartRange: HistoryStore.Range = .fiveMinutes
 
@@ -33,6 +34,7 @@ struct DashboardView: View {
 
                     chartsBlock
                     processSection
+                    usageSection
                 }
                 .padding(28)
                 .font(Theme.body)
@@ -215,6 +217,50 @@ struct DashboardView: View {
                 .font(header ? Theme.label : Theme.mono)
                 .foregroundStyle(header ? Theme.textDim : Theme.text)
                 .frame(width: 86, alignment: .trailing)
+        }
+    }
+
+    // MARK: App usage
+
+    private var usageSection: some View {
+        let items = usage.usageToday()
+        return surface {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("TODAY'S APP USAGE").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+
+                if items.isEmpty {
+                    Text("No activity tracked yet")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textDim)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                } else {
+                    let peak = items.first?.duration ?? 1
+                    VStack(spacing: 10) {
+                        ForEach(items.prefix(8)) { item in
+                            usageRow(item, peak: peak)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func usageRow(_ item: AppUsage, peak: TimeInterval) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(item.appName).font(Theme.body).foregroundStyle(Theme.text).lineLimit(1)
+                Spacer()
+                Text(item.durationText).font(Theme.mono).foregroundStyle(Theme.textDim)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.border)
+                    Capsule()
+                        .fill(Theme.accent)
+                        .frame(width: geo.size.width * CGFloat(item.duration / max(1, peak)))
+                }
+            }
+            .frame(height: 4)
         }
     }
 

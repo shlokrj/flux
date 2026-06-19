@@ -18,14 +18,14 @@ struct FluxApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarView(metrics: metrics, processes: processes)
+            MenuBarView(metrics: metrics, processes: processes, usage: usage)
         } label: {
-            MenuBarLabel(metrics: metrics, history: history)
+            MenuBarLabel(metrics: metrics, history: history, usage: usage)
         }
         .menuBarExtraStyle(.window)
 
         Window("Flux Dashboard", id: "dashboard") {
-            DashboardView(metrics: metrics, processes: processes, history: history)
+            DashboardView(metrics: metrics, processes: processes, history: history, usage: usage)
         }
     }
 }

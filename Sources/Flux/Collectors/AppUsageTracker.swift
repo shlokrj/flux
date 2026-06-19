@@ -9,6 +9,23 @@ import AppKit
 ///
 /// - Note: Idle/sleep handling (pausing a session when the machine is idle or
 ///   asleep) is not implemented yet — see `spec.md` §6 / `skills.md`.
+/// One app's aggregated foreground time over some window.
+struct AppUsage: Identifiable, Hashable {
+    let id: String  // bundle identifier
+    let appName: String
+    let duration: TimeInterval
+
+    /// e.g. `"3h 42m"`, `"58m"`, `"45s"`.
+    var durationText: String {
+        let total = Int(duration)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        if minutes > 0 { return "\(minutes)m" }
+        return "\(total)s"
+    }
+}
+
 @MainActor
 final class AppUsageTracker: ObservableObject {
     /// The session currently in progress, if any.
@@ -47,6 +64,29 @@ final class AppUsageTracker: ObservableObject {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         observer = nil
+    }
+
+    /// Total foreground time per app, longest first — clipped to today.
+    func usageToday() -> [AppUsage] {
+        let dayStart = Calendar.current.startOfDay(for: .now)
+        var totals: [String: (name: String, duration: TimeInterval)] = [:]
+
+        var all = sessions
+        if let current { all.append(current) }
+
+        for session in all {
+            let start = max(session.start, dayStart)
+            let end = session.end ?? .now
+            guard end > start else { continue }
+            var entry = totals[session.bundleID] ?? (session.appName, 0)
+            entry.duration += end.timeIntervalSince(start)
+            entry.name = session.appName
+            totals[session.bundleID] = entry
+        }
+
+        return totals
+            .map { AppUsage(id: $0.key, appName: $0.value.name, duration: $0.value.duration) }
+            .sorted { $0.duration > $1.duration }
     }
 
     /// Close out the current session and open a new one for `app`.
