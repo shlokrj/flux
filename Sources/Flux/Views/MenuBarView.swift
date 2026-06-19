@@ -1,17 +1,31 @@
 import SwiftUI
 import AppKit
 
-/// The stable, low-noise label shown in the menu bar. It also owns the task
-/// that starts Flux's long-lived collection pipeline.
+/// A compact CPU + memory readout. Battery is intentionally omitted because
+/// macOS already keeps it visible in the menu bar.
 struct MenuBarLabel: View {
-    var metrics: MetricsCollector
+    @ObservedObject var metrics: MetricsCollector
     var processes: ProcessCollector
     var history: HistoryStore
     var usage: AppUsageTracker
     var timeline: TimelineEngine
 
     var body: some View {
-        Text("Flux")
+        Group {
+            if let snapshot = metrics.latest {
+                HStack(spacing: 4) {
+                    Image(systemName: "cpu")
+                    Text(snapshot.cpuPercentText)
+                    Image(systemName: "memorychip")
+                        .padding(.leading, 2)
+                    Text(snapshot.memoryPercentText)
+                }
+                .font(.system(size: 12, weight: .medium, design: .default))
+                .monospacedDigit()
+            } else {
+                Text("Flux")
+            }
+        }
         // Always present once the app launches, so this is where sampling,
         // history recording, timeline analysis, process enumeration, and
         // app-usage tracking kick off (whether or not the dashboard is open).
@@ -33,80 +47,20 @@ struct MenuBarView: View {
     @ObservedObject var usage: AppUsageTracker
     @Environment(\.openWindow) private var openWindow
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 8),
-        GridItem(.flexible(), spacing: 8)
-    ]
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Flux")
-                    .font(.system(.title3, design: .default, weight: .semibold))
+            Text("Flux")
+                .font(.system(.headline, design: .default, weight: .semibold))
+                .padding(.horizontal, 4)
+                .padding(.bottom, 8)
 
-                Spacer()
+            metricRow("CPU", icon: "cpu", value: metrics.latest?.cpuPercentText ?? "—")
+            metricRow("Memory", icon: "memorychip", value: metrics.latest?.memoryText ?? "—")
+            metricRow("Battery", icon: "battery.100", value: metrics.latest?.batteryText ?? "—")
+            metricRow("Network", icon: "network", value: metrics.latest?.networkText ?? "—")
+            metricRow("Active app", icon: "app.fill", value: usage.current?.appName ?? "—")
 
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(Theme.accent)
-                        .frame(width: 6, height: 6)
-                    Text("Live")
-                        .font(Theme.secondary.weight(.medium))
-                        .foregroundStyle(Theme.textDim)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Theme.surfaceRaised.opacity(0.55), in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-            }
-            .padding(.bottom, 14)
-
-            LazyVGrid(columns: columns, spacing: 8) {
-                metricTile(
-                    "CPU",
-                    icon: "cpu",
-                    value: metrics.latest?.cpuPercentText ?? "—",
-                    detail: metrics.latest?.topProcessName.map { "Top · \($0)" } ?? "System usage"
-                )
-                metricTile(
-                    "Memory",
-                    icon: "memorychip",
-                    value: metrics.latest?.memoryPercentText ?? "—",
-                    detail: metrics.latest?.memoryText ?? "Collecting…"
-                )
-                metricTile(
-                    "Battery",
-                    icon: "battery.100",
-                    value: metrics.latest?.batteryText ?? "—",
-                    detail: "Charge level"
-                )
-                metricTile(
-                    "Network",
-                    icon: "network",
-                    value: metrics.latest.map { "↓ \($0.networkDownText)" } ?? "—",
-                    detail: metrics.latest.map { "↑ \($0.networkUpText)" } ?? "Collecting…"
-                )
-            }
-
-            HStack(spacing: 9) {
-                Image(systemName: "app.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.textDim)
-                    .frame(width: 16)
-                Text("Active app")
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.textDim)
-                Spacer()
-                Text(usage.current?.appName ?? "—")
-                    .font(Theme.body.weight(.medium))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 13)
-
-            Divider().overlay(Theme.border).padding(.vertical, 12)
+            Divider().overlay(Theme.border).padding(.vertical, 8)
 
             actionButton("Open Dashboard", icon: "rectangle.on.rectangle") {
                 openWindow(id: "dashboard")
@@ -115,9 +69,9 @@ struct MenuBarView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(16)
-        .frame(width: 300)
-        .background(Theme.background)
+        .padding(12)
+        .frame(width: 258)
+        .background(.ultraThinMaterial)
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
         .task {
@@ -126,36 +80,25 @@ struct MenuBarView: View {
         }
     }
 
-    private func metricTile(_ title: String, icon: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 14)
-                Text(title)
-                    .font(Theme.label)
-                    .foregroundStyle(Theme.textDim)
-            }
-
-            Spacer(minLength: 8)
-
-            Text(value)
-                .font(.system(.title3, design: .default, weight: .semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            Text(detail)
-                .font(Theme.secondary)
+    private func metricRow(_ title: String, icon: String, value: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 16)
+            Text(title)
+                .font(Theme.body)
                 .foregroundStyle(Theme.textDim)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(Theme.mono)
+                .foregroundStyle(Theme.text)
                 .lineLimit(1)
+                .minimumScaleFactor(0.72)
                 .truncationMode(.tail)
         }
-        .padding(11)
-        .frame(maxWidth: .infinity, minHeight: 92, maxHeight: 92, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .frame(maxWidth: .infinity, minHeight: 27)
+        .padding(.horizontal, 4)
     }
 
     private func actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -182,8 +125,8 @@ private struct MenuBarActionButton: View {
                     .foregroundStyle(Theme.text)
                 Spacer()
             }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
             .background(
                 isHovering ? Theme.surfaceRaised.opacity(0.7) : Color.clear,
                 in: RoundedRectangle(cornerRadius: 7, style: .continuous)
