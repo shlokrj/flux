@@ -2,9 +2,10 @@ import Foundation
 
 /// Enumerates running processes and exposes them sorted by the active filter.
 ///
-/// - Note: Phase 1 stub. `refresh()` is a no-op until process enumeration
-///   (proc_listpids / proc_pid_rusage / proc_pidinfo) is wired up — see
-///   `skills.md`.
+/// Sampling is on a timer via `start()`. Backed by `ProcessReader`.
+///
+/// - Note: enumeration runs on the main actor for now; if it ever shows up in
+///   UI hitches, move the `ProcessReader.sample()` call off-main.
 @MainActor
 final class ProcessCollector: ObservableObject {
     /// How the process table is ordered.
@@ -20,9 +21,31 @@ final class ProcessCollector: ObservableObject {
     @Published private(set) var processes: [ProcessSnapshot] = []
     @Published var sortKey: SortKey = .cpu
 
-    /// TODO(phase1): enumerate live processes and populate `processes`.
+    private let interval: TimeInterval
+    private var timer: Timer?
+    private var reader = ProcessReader()
+
+    init(interval: TimeInterval = 3) {
+        self.interval = interval
+    }
+
+    /// Begin sampling. Safe to call repeatedly — it restarts the timer.
+    func start() {
+        stop()
+        refresh()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refresh() }
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    /// Take one sample of the live process list.
     func refresh() {
-        // placeholder — no live processes yet.
+        processes = reader.sample()
     }
 
     /// `processes` ordered by the current `sortKey`.

@@ -25,7 +25,7 @@ struct MenuBarView: View {
         .frame(width: 260)
         .task {
             metrics.start()
-            processes.refresh()
+            processes.start()
         }
     }
 
