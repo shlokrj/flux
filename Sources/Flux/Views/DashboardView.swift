@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The main window: a grid of metric cards plus placeholders for the live
-/// charts and process table that arrive in Phase 2.
+/// The main window: a grid of metric cards and a live, sortable process table,
+/// plus a placeholder for the charts that arrive in Phase 2.
 struct DashboardView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
@@ -27,13 +27,15 @@ struct DashboardView: View {
                 // TODO(phase2): live CPU / memory / network charts (Swift Charts).
                 placeholderBox("CPU over time", note: "Charts arrive in Phase 2")
 
-                // TODO(phase2): top processes table, sortable via processes.sortKey.
-                placeholderBox("Top processes", note: "Process table arrives in Phase 2")
+                processSection
             }
             .padding(24)
         }
         .frame(minWidth: 640, minHeight: 480)
-        .task { metrics.start() }
+        .task {
+            metrics.start()
+            processes.start()
+        }
     }
 
     private func placeholderBox(_ title: String, note: String) -> some View {
@@ -42,6 +44,67 @@ struct DashboardView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, minHeight: 120)
         }
+    }
+
+    private var processSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Top processes").font(.headline)
+                    Spacer()
+                    Picker("Sort", selection: $processes.sortKey) {
+                        ForEach(ProcessCollector.SortKey.allCases) { key in
+                            Text(key.rawValue).tag(key)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+
+                ProcessRow(name: "Process", cpu: "CPU", memory: "RAM", isHeader: true)
+                Divider()
+
+                if processes.processes.isEmpty {
+                    Text("Sampling…")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 80)
+                } else {
+                    ForEach(processes.sorted.prefix(12)) { process in
+                        ProcessRow(
+                            name: process.name,
+                            cpu: process.cpuPercentText,
+                            memory: process.memoryText
+                        )
+                    }
+                }
+            }
+            .padding(6)
+        }
+    }
+}
+
+/// One row of the process table (also used, with `isHeader`, for the header).
+private struct ProcessRow: View {
+    let name: String
+    let cpu: String
+    let memory: String
+    var isHeader = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(name)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(cpu)
+                .frame(width: 70, alignment: .trailing)
+            Text(memory)
+                .frame(width: 90, alignment: .trailing)
+        }
+        .font(isHeader ? .caption.weight(.semibold) : .callout)
+        .foregroundStyle(isHeader ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+        .monospacedDigit()
     }
 }
 
