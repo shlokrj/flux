@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 /// The main window: a grid of metric cards, a live CPU chart, and a sortable
-/// process table. Styled with `Theme` (deep black, mint accents, DM Sans).
+/// process table. Styled with `Theme` (deep black, mint accents, system font).
 struct DashboardView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
