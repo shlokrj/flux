@@ -11,13 +11,11 @@ struct MenuBarLabel: View {
     var timeline: TimelineEngine
 
     var body: some View {
-        // Kept deliberately compact (icon + CPU%) so it's less likely to get
-        // hidden behind the notch on space-constrained menu bars.
+        // Compact (icon + CPU%) so it's less likely to get hidden behind the
+        // notch — but ALWAYS render text so the item can never be zero-width.
         HStack(spacing: 3) {
             Image(systemName: "gauge.medium")
-            if let cpu = metrics.latest?.cpuPercentText {
-                Text(cpu)
-            }
+            Text(metrics.latest?.cpuPercentText ?? "Flux")
         }
         // Always present once the app launches, so this is where sampling,
         // history recording, timeline analysis, process enumeration, and

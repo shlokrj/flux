@@ -22,7 +22,10 @@ struct FluxApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Flux Dashboard", id: "dashboard") {
+        // A WindowGroup (vs Window) so the dashboard opens at launch and the
+        // app is reliably reachable from the Dock — not solely dependent on the
+        // menu bar item, which macOS can hide behind the notch on busy bars.
+        WindowGroup("Flux Dashboard", id: "dashboard") {
             DashboardView(metrics: metrics, processes: processes, history: history, usage: usage, timeline: timeline, devServers: devServers)
         }
     }
