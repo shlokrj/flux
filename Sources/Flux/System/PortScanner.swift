@@ -48,6 +48,16 @@ enum PortScanner {
             }
         }
 
-        return byPort.values.sorted { $0.port < $1.port }
+        // Tie each server to its git project (working dir → repo → branch).
+        return byPort.values
+            .map { server in
+                var server = server
+                if let project = ProjectInfo.project(for: server.pid) {
+                    server.projectName = project.name
+                    server.gitBranch = project.branch
+                }
+                return server
+            }
+            .sorted { $0.port < $1.port }
     }
 }

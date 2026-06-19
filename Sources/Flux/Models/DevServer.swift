@@ -8,4 +8,7 @@ struct DevServer: Identifiable, Hashable {
     var port: Int { id }
     let command: String
     let pid: Int32
+    /// The git project the process runs in, if it could be inferred.
+    var projectName: String? = nil
+    var gitBranch: String? = nil
 }

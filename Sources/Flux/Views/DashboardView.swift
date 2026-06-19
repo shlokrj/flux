@@ -254,12 +254,23 @@ struct DashboardView: View {
                                     .font(Theme.mono)
                                     .foregroundStyle(Theme.accent)
                                     .frame(width: 70, alignment: .leading)
-                                Text(server.command)
-                                    .font(Theme.body)
-                                    .foregroundStyle(Theme.text)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(server.command)
+                                        .font(Theme.body)
+                                        .foregroundStyle(Theme.text)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    if let project = server.projectName {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "folder").font(.system(size: 9))
+                                            Text(server.gitBranch.map { "\(project) · \($0)" } ?? project)
+                                                .lineLimit(1)
+                                        }
+                                        .font(Theme.font(11, .regular))
+                                        .foregroundStyle(Theme.textDim)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 Text("pid \(String(server.pid))")
                                     .font(Theme.mono)
                                     .foregroundStyle(Theme.textDim)
