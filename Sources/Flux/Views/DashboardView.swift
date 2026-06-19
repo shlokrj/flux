@@ -270,7 +270,7 @@ struct DashboardView: View {
     // MARK: App usage
 
     private var usageSection: some View {
-        let items = usage.usageToday()
+        let items = history.usageToday(including: usage.current)
         return surface {
             VStack(alignment: .leading, spacing: 12) {
                 Text("TODAY'S APP USAGE").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)

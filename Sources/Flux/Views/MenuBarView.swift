@@ -18,8 +18,9 @@ struct MenuBarLabel: View {
         // history recording, timeline analysis, and app-usage tracking kick off
         // (whether or not the dashboard is open).
         .task {
+            timeline.attach(history)
             metrics.start(recording: history, timeline: timeline)
-            usage.start()
+            usage.start(recording: history)
         }
     }
 

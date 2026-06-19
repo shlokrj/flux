@@ -111,6 +111,103 @@ final class HistoryStore: ObservableObject {
         return result
     }
 
+    // MARK: App usage
+
+    /// Persist a completed foreground session.
+    func recordSession(_ session: AppUsageSession) {
+        guard let db, let end = session.end else { return }
+        let sql = "INSERT INTO app_sessions (bundle_id, app_name, start, end) VALUES (?, ?, ?, ?);"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        bindText(stmt, 1, session.bundleID)
+        bindText(stmt, 2, session.appName)
+        sqlite3_bind_double(stmt, 3, session.start.timeIntervalSince1970)
+        sqlite3_bind_double(stmt, 4, end.timeIntervalSince1970)
+        sqlite3_step(stmt)
+        revision &+= 1
+    }
+
+    /// Per-app foreground time for today (clipped to midnight), longest first.
+    /// `current` is the still-running session, not yet persisted.
+    func usageToday(including current: AppUsageSession?) -> [AppUsage] {
+        let dayStart = Calendar.current.startOfDay(for: .now).timeIntervalSince1970
+        var totals: [String: (name: String, duration: Double)] = [:]
+
+        if let db {
+            let sql = """
+            SELECT bundle_id, app_name, SUM(end - MAX(start, ?))
+            FROM app_sessions WHERE end > ?
+            GROUP BY bundle_id;
+            """
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_double(stmt, 1, dayStart)
+                sqlite3_bind_double(stmt, 2, dayStart)
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    guard let bid = sqlite3_column_text(stmt, 0),
+                          let name = sqlite3_column_text(stmt, 1) else { continue }
+                    totals[String(cString: bid)] = (String(cString: name), sqlite3_column_double(stmt, 2))
+                }
+            }
+            sqlite3_finalize(stmt)
+        }
+
+        if let current {
+            let start = max(current.start.timeIntervalSince1970, dayStart)
+            let duration = Date.now.timeIntervalSince1970 - start
+            if duration > 0 {
+                var entry = totals[current.bundleID] ?? (current.appName, 0)
+                entry.duration += duration
+                entry.name = current.appName
+                totals[current.bundleID] = entry
+            }
+        }
+
+        return totals
+            .map { AppUsage(id: $0.key, appName: $0.value.name, duration: $0.value.duration) }
+            .sorted { $0.duration > $1.duration }
+    }
+
+    // MARK: Timeline events
+
+    func recordEvent(_ event: TimelineEngine.Event) {
+        guard let db else { return }
+        let sql = "INSERT INTO events (ts, kind, message) VALUES (?, ?, ?);"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_double(stmt, 1, event.timestamp.timeIntervalSince1970)
+        bindText(stmt, 2, event.kind.rawValue)
+        bindText(stmt, 3, event.message)
+        sqlite3_step(stmt)
+    }
+
+    /// Most recent events, newest first.
+    func recentEvents(limit: Int = 200) -> [TimelineEngine.Event] {
+        guard let db else { return [] }
+        let sql = "SELECT ts, kind, message FROM events ORDER BY ts DESC LIMIT ?;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(limit))
+
+        var result: [TimelineEngine.Event] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let kindText = sqlite3_column_text(stmt, 1),
+                  let kind = TimelineEngine.Event.Kind(rawValue: String(cString: kindText)),
+                  let message = sqlite3_column_text(stmt, 2) else { continue }
+            result.append(
+                TimelineEngine.Event(
+                    timestamp: Date(timeIntervalSince1970: sqlite3_column_double(stmt, 0)),
+                    kind: kind,
+                    message: String(cString: message)
+                )
+            )
+        }
+        return result
+    }
+
     // MARK: Setup
 
     private func openDatabase() {
@@ -140,11 +237,32 @@ final class HistoryStore: ObservableObject {
         );
         """)
         exec("CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON snapshots(ts);")
+
+        exec("""
+        CREATE TABLE IF NOT EXISTS app_sessions (
+            bundle_id TEXT NOT NULL,
+            app_name TEXT NOT NULL,
+            start REAL NOT NULL,
+            end REAL NOT NULL
+        );
+        """)
+        exec("CREATE INDEX IF NOT EXISTS idx_sessions_start ON app_sessions(start);")
+
+        exec("""
+        CREATE TABLE IF NOT EXISTS events (
+            ts REAL NOT NULL,
+            kind TEXT NOT NULL,
+            message TEXT NOT NULL
+        );
+        """)
+        exec("CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);")
     }
 
     private func prune() {
         let cutoff = Date.now.addingTimeInterval(-Double(retentionDays) * 86_400).timeIntervalSince1970
         exec("DELETE FROM snapshots WHERE ts < \(cutoff);")
+        exec("DELETE FROM app_sessions WHERE end < \(cutoff);")
+        exec("DELETE FROM events WHERE ts < \(cutoff);")
     }
 
     // MARK: Helpers

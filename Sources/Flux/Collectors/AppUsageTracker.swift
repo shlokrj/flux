@@ -30,13 +30,15 @@ struct AppUsage: Identifiable, Hashable {
 final class AppUsageTracker: ObservableObject {
     /// The session currently in progress, if any.
     @Published private(set) var current: AppUsageSession?
-    /// Completed sessions, oldest first.
-    @Published private(set) var sessions: [AppUsageSession] = []
 
     private var observer: NSObjectProtocol?
+    /// Completed sessions are persisted here; aggregation lives in the store.
+    private weak var history: HistoryStore?
 
-    /// Begin observing frontmost-app changes.
-    func start() {
+    /// Begin observing frontmost-app changes, persisting completed sessions to
+    /// `history` if provided.
+    func start(recording history: HistoryStore? = nil) {
+        if let history { self.history = history }
         guard observer == nil else { return }
 
         // Seed with whatever is frontmost right now.
@@ -66,29 +68,6 @@ final class AppUsageTracker: ObservableObject {
         observer = nil
     }
 
-    /// Total foreground time per app, longest first — clipped to today.
-    func usageToday() -> [AppUsage] {
-        let dayStart = Calendar.current.startOfDay(for: .now)
-        var totals: [String: (name: String, duration: TimeInterval)] = [:]
-
-        var all = sessions
-        if let current { all.append(current) }
-
-        for session in all {
-            let start = max(session.start, dayStart)
-            let end = session.end ?? .now
-            guard end > start else { continue }
-            var entry = totals[session.bundleID] ?? (session.appName, 0)
-            entry.duration += end.timeIntervalSince(start)
-            entry.name = session.appName
-            totals[session.bundleID] = entry
-        }
-
-        return totals
-            .map { AppUsage(id: $0.key, appName: $0.value.name, duration: $0.value.duration) }
-            .sorted { $0.duration > $1.duration }
-    }
-
     /// Close out the current session and open a new one for `app`.
     private func switchTo(_ app: NSRunningApplication) {
         let now = Date.now
@@ -97,7 +76,7 @@ final class AppUsageTracker: ObservableObject {
             // Ignore re-activation of the same app.
             if ongoing.bundleID == (app.bundleIdentifier ?? "unknown") { return }
             ongoing.end = now
-            sessions.append(ongoing)
+            history?.recordSession(ongoing)
         }
 
         current = AppUsageSession(

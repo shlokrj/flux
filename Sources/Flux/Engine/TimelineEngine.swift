@@ -30,6 +30,14 @@ final class TimelineEngine: ObservableObject {
     @Published private(set) var events: [Event] = []
 
     private let maxEvents = 200
+    private weak var history: HistoryStore?
+
+    /// Attach a store: persist new events to it, and load past events from it so
+    /// the timeline survives restarts. Call once at launch.
+    func attach(_ history: HistoryStore) {
+        self.history = history
+        events = history.recentEvents(limit: maxEvents)
+    }
 
     // Edge-detection state.
     private var cpuWasHigh = false
@@ -91,9 +99,11 @@ final class TimelineEngine: ObservableObject {
     }
 
     private func add(_ kind: Event.Kind, at timestamp: Date, _ message: String) {
-        events.insert(Event(timestamp: timestamp, kind: kind, message: message), at: 0)
+        let event = Event(timestamp: timestamp, kind: kind, message: message)
+        events.insert(event, at: 0)
         if events.count > maxEvents {
             events.removeLast(events.count - maxEvents)
         }
+        history?.recordEvent(event)
     }
 }
