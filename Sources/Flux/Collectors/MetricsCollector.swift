@@ -1,0 +1,44 @@
+import Foundation
+import Combine
+
+/// Samples system-wide metrics (CPU, memory, battery, network) on a timer and
+/// publishes the most recent `SystemSnapshot`.
+///
+/// - Note: Phase 1 stub. `sample()` currently emits placeholder values; the real
+///   reads (host_statistics64 / sysctl / IOKit / getifaddrs) are described in
+///   `skills.md` and land next.
+@MainActor
+final class MetricsCollector: ObservableObject {
+    /// The latest sampled snapshot, or `nil` before the first tick.
+    @Published private(set) var latest: SystemSnapshot?
+
+    private let interval: TimeInterval
+    private var timer: Timer?
+
+    init(interval: TimeInterval = 2) {
+        self.interval = interval
+    }
+
+    /// Begin sampling. Safe to call repeatedly — it restarts the timer.
+    func start() {
+        stop()
+        sample()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.sample() }
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    /// TODO(phase1): replace placeholders with real CPU/memory/battery/network reads.
+    private func sample() {
+        latest = SystemSnapshot(
+            cpuUsage: 0,
+            memoryUsed: 0,
+            memoryTotal: ProcessInfo.processInfo.physicalMemory
+        )
+    }
+}
