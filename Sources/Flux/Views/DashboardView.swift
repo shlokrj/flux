@@ -20,8 +20,8 @@ struct DashboardView: View {
                     MetricCard(title: "Memory", value: metrics.latest?.memoryText ?? "—", systemImage: "memorychip")
                     MetricCard(title: "Battery", value: metrics.latest?.batteryText ?? "—", systemImage: "battery.100")
                     MetricCard(title: "Network", value: metrics.latest?.networkText ?? "—", systemImage: "network")
-                    MetricCard(title: "Storage", value: "—", systemImage: "internaldrive")
-                    MetricCard(title: "Uptime", value: "—", systemImage: "clock")
+                    MetricCard(title: "Storage", value: SystemInfo.diskText, systemImage: "internaldrive")
+                    MetricCard(title: "Uptime", value: SystemInfo.uptimeText, systemImage: "clock")
                 }
 
                 // TODO(phase2): live CPU / memory / network charts (Swift Charts).
