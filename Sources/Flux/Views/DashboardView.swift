@@ -1,56 +1,96 @@
 import SwiftUI
 
 /// The main window: a grid of metric cards and a live, sortable process table,
-/// plus a placeholder for the charts that arrive in Phase 2.
+/// plus a placeholder for the chart that arrives next. Styled with `Theme`
+/// (deep black, mint accents, DM Sans).
 struct DashboardView: View {
     @ObservedObject var metrics: MetricsCollector
     @ObservedObject var processes: ProcessCollector
     @ObservedObject var history: HistoryStore
 
-    private let columns = [GridItem(.adaptive(minimum: 170), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 160), spacing: 14)]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Dashboard")
-                    .font(.largeTitle.bold())
+        ZStack {
+            Theme.background.ignoresSafeArea()
 
-                LazyVGrid(columns: columns, spacing: 16) {
-                    MetricCard(title: "CPU", value: metrics.latest?.cpuPercentText ?? "—", systemImage: "cpu")
-                    MetricCard(title: "Memory", value: metrics.latest?.memoryText ?? "—", systemImage: "memorychip")
-                    MetricCard(title: "Battery", value: metrics.latest?.batteryText ?? "—", systemImage: "battery.100")
-                    MetricCard(title: "Network", value: metrics.latest?.networkText ?? "—", systemImage: "network")
-                    MetricCard(title: "Storage", value: SystemInfo.diskText, systemImage: "internaldrive")
-                    MetricCard(title: "Uptime", value: SystemInfo.uptimeText, systemImage: "clock")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 26) {
+                    Text("Dashboard")
+                        .font(Theme.display)
+                        .foregroundStyle(Theme.text)
+
+                    LazyVGrid(columns: columns, spacing: 14) {
+                        metricCard("CPU", metrics.latest?.cpuPercentText ?? "—", "cpu")
+                        metricCard("Memory", metrics.latest?.memoryText ?? "—", "memorychip")
+                        metricCard("Battery", metrics.latest?.batteryText ?? "—", "battery.100")
+                        metricCard("Network", metrics.latest?.networkText ?? "—", "network")
+                        metricCard("Storage", SystemInfo.diskText, "internaldrive")
+                        metricCard("Uptime", SystemInfo.uptimeText, "clock")
+                    }
+
+                    chartPlaceholder
+                    processSection
                 }
-
-                // TODO(phase2): live CPU / memory / network charts (Swift Charts).
-                placeholderBox("CPU over time", note: "Charts arrive in Phase 2")
-
-                processSection
+                .padding(28)
+                .font(Theme.body)
+                .foregroundStyle(Theme.text)
             }
-            .padding(24)
         }
-        .frame(minWidth: 640, minHeight: 480)
+        .frame(minWidth: 680, minHeight: 560)
+        .tint(Theme.accent)
+        .preferredColorScheme(.dark)
         .task {
             metrics.start()
             processes.start()
         }
     }
 
-    private func placeholderBox(_ title: String, note: String) -> some View {
-        GroupBox(title) {
-            Text(note)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 120)
+    // MARK: Cards
+
+    private func metricCard(_ title: String, _ value: String, _ icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.accent)
+                Text(title.uppercased())
+                    .font(Theme.label)
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.textDim)
+            }
+            Text(value)
+                .font(Theme.font(22, .light))
+                .foregroundStyle(Theme.text)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.border, lineWidth: 1))
+    }
+
+    private var chartPlaceholder: some View {
+        surface {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("CPU OVER TIME").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+                Text("Live chart arrives next")
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textDim)
+                    .frame(maxWidth: .infinity, minHeight: 130)
+            }
         }
     }
 
+    // MARK: Process table
+
     private var processSection: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 6) {
+        surface {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Top processes").font(.headline)
+                    Text("TOP PROCESSES").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
                     Spacer()
                     Picker("Sort", selection: $processes.sortKey) {
                         ForEach(ProcessCollector.SortKey.allCases) { key in
@@ -62,75 +102,51 @@ struct DashboardView: View {
                     .fixedSize()
                 }
 
-                ProcessRow(name: "Process", cpu: "CPU", memory: "RAM", isHeader: true)
-                Divider()
+                VStack(spacing: 8) {
+                    processRow("Process", "CPU", "RAM", header: true)
+                    Divider().overlay(Theme.border)
 
-                if processes.processes.isEmpty {
-                    Text("Sampling…")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 80)
-                } else {
-                    ForEach(processes.sorted.prefix(12)) { process in
-                        ProcessRow(
-                            name: process.name,
-                            cpu: process.cpuPercentText,
-                            memory: process.memoryText
-                        )
+                    if processes.processes.isEmpty {
+                        Text("Sampling…")
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.textDim)
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                    } else {
+                        ForEach(processes.sorted.prefix(12)) { process in
+                            processRow(process.name, process.cpuPercentText, process.memoryText)
+                        }
                     }
                 }
             }
-            .padding(6)
         }
     }
-}
 
-/// One row of the process table (also used, with `isHeader`, for the header).
-private struct ProcessRow: View {
-    let name: String
-    let cpu: String
-    let memory: String
-    var isHeader = false
-
-    var body: some View {
+    private func processRow(_ name: String, _ cpu: String, _ ram: String, header: Bool = false) -> some View {
         HStack(spacing: 12) {
             Text(name)
+                .font(header ? Theme.label : Theme.body)
+                .foregroundStyle(header ? Theme.textDim : Theme.text)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(cpu)
-                .frame(width: 70, alignment: .trailing)
-            Text(memory)
-                .frame(width: 90, alignment: .trailing)
+                .font(header ? Theme.label : Theme.mono)
+                .foregroundStyle(header ? Theme.textDim : Theme.accent)
+                .frame(width: 60, alignment: .trailing)
+            Text(ram)
+                .font(header ? Theme.label : Theme.mono)
+                .foregroundStyle(header ? Theme.textDim : Theme.text)
+                .frame(width: 86, alignment: .trailing)
         }
-        .font(isHeader ? .caption.weight(.semibold) : .callout)
-        .foregroundStyle(isHeader ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-        .monospacedDigit()
     }
-}
 
-/// A single labelled metric card used in the dashboard grid.
-private struct MetricCard: View {
-    let title: String
-    let value: String
-    let systemImage: String
+    // MARK: Building block
 
-    var body: some View {
-        GroupBox {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .foregroundStyle(.tint)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(value)
-                        .font(.title3.weight(.semibold))
-                        .monospacedDigit()
-                }
-                Spacer()
-            }
-            .padding(4)
-        }
+    private func surface<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 }
