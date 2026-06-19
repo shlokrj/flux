@@ -1,55 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// A compact CPU + memory readout. Battery is intentionally omitted because
-/// macOS already keeps it visible in the menu bar.
-struct MenuBarLabel: View {
-    @ObservedObject var metrics: MetricsCollector
-    var processes: ProcessCollector
-    var history: HistoryStore
-    var usage: AppUsageTracker
-    var timeline: TimelineEngine
-
-    var body: some View {
-        statusText
-        .font(.system(size: 11, weight: .medium, design: .default))
-        .monospacedDigit()
-        .fixedSize(horizontal: true, vertical: false)
-        .accessibilityLabel(statusAccessibilityLabel)
-        // Always present once the app launches, so this is where sampling,
-        // history recording, timeline analysis, process enumeration, and
-        // app-usage tracking kick off (whether or not the dashboard is open).
-        .task {
-            timeline.attach(history)
-            usage.start(recording: history)
-            processes.start()
-            metrics.attachSources(processes: processes, usage: usage)
-            metrics.start(recording: history, timeline: timeline)
-        }
-    }
-
-    /// Keep the status item as one attributed label. `MenuBarExtra` can clip
-    /// later children in an `HStack`, while a single `Text` receives one stable
-    /// intrinsic width from AppKit.
-    private var statusText: Text {
-        Text(Image(systemName: "cpu"))
-            + Text(" \(metrics.latest?.cpuPercentText ?? "—")  ")
-            + Text(Image(systemName: "memorychip"))
-            + Text(" \(metrics.latest?.memoryPercentText ?? "—")")
-    }
-
-    private var statusAccessibilityLabel: String {
-        "CPU \(metrics.latest?.cpuPercentText ?? "unavailable"), memory \(metrics.latest?.memoryPercentText ?? "unavailable")"
-    }
-}
-
 /// The dropdown panel shown when the menu bar item is clicked: a compact
 /// overview plus actions.
 struct MenuBarView: View {
     @ObservedObject var metrics: MetricsCollector
     var processes: ProcessCollector
     @ObservedObject var usage: AppUsageTracker
-    @Environment(\.openWindow) private var openWindow
+    let openDashboard: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -67,7 +25,7 @@ struct MenuBarView: View {
             Divider().overlay(Theme.border).padding(.vertical, 8)
 
             actionButton("Open Dashboard", icon: "rectangle.on.rectangle") {
-                openWindow(id: "dashboard")
+                openDashboard()
             }
             actionButton("Quit Flux", icon: "power") {
                 NSApplication.shared.terminate(nil)
