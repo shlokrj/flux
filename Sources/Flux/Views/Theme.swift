@@ -1,41 +1,38 @@
 import SwiftUI
 
-/// Flux's visual language: a deep-black dark surface, near-white text, and mint
-/// green accents, set in the system font (San Francisco) at deliberately light
-/// weights for a modern, airy feel.
+/// Flux's visual language: native macOS surfaces and typography with a single
+/// mint accent. Semantic system text styles keep the hierarchy feeling at home
+/// on macOS and continue to respond to accessibility text-size preferences.
 ///
 /// Everything visual routes through here so the look can be tuned in one place
 /// (e.g. flipping to a light base later is a handful of edits).
 enum Theme {
     // MARK: Palette
 
-    /// Very deep black — the window background.
-    static let background = Color(hex: 0x0A0A0B)
-    /// Slightly lifted surface for cards.
-    static let surface = Color(hex: 0x141416)
-    /// Hairline separators / card borders.
-    static let border = Color.white.opacity(0.08)
+    static let background = Color(nsColor: .windowBackgroundColor)
+    static let surface = Color(nsColor: .controlBackgroundColor)
+    static let surfaceRaised = Color(nsColor: .textBackgroundColor)
+    static let border = Color(nsColor: .separatorColor)
 
-    static let text = Color(hex: 0xF4F4F5)
-    static let textDim = Color.white.opacity(0.5)
+    static let text = Color.primary
+    static let textDim = Color.secondary
 
     /// Mint green — the single accent.
     static let accent = Color(hex: 0xADEBB3)
 
-    // MARK: Type — system font (San Francisco), kept light
+    // MARK: Type — semantic San Francisco styles
 
-    static func font(_ size: CGFloat, _ weight: Font.Weight = .light) -> Font {
-        .system(size: size, weight: weight)
+    static func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .default)
     }
 
-    /// Big, airy headline (e.g. the window title).
-    static var display: Font { font(30, .thin) }
-    /// Large metric numbers — super light for that modern look.
-    static var metric: Font { font(26, .ultraLight) }
-    /// Card / section labels.
-    static var label: Font { font(12, .medium) }
-    static var body: Font { font(14, .light) }
-    static var mono: Font { font(13, .regular).monospacedDigit() }
+    static var display: Font { .system(.largeTitle, design: .default, weight: .semibold) }
+    static var metric: Font { .system(.title2, design: .default, weight: .medium).monospacedDigit() }
+    static var sectionTitle: Font { .system(.headline, design: .default, weight: .semibold) }
+    static var label: Font { .system(.caption, design: .default, weight: .semibold) }
+    static var body: Font { .system(.body, design: .default, weight: .regular) }
+    static var secondary: Font { .system(.caption, design: .default, weight: .regular) }
+    static var mono: Font { .system(.callout, design: .default, weight: .regular).monospacedDigit() }
 }
 
 extension Color {

@@ -2,7 +2,7 @@
 #
 # Builds Flux and wraps the SPM binary in a minimal .app bundle so the menu bar
 # item actually shows up, then launches it. A menu bar app needs an app bundle
-# with LSUIElement set - `swift run` alone won't cut it.
+# with LSUIElement enabled - `swift run` alone won't cut it.
 #
 # Usage: ./scripts/run.sh [debug|release]   (default: debug)
 set -euo pipefail
@@ -33,7 +33,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleShortVersionString</key><string>0.1</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>LSUIElement</key><false/>
+    <key>LSUIElement</key><true/>
 </dict>
 </plist>
 PLIST
