@@ -9,6 +9,7 @@ struct DashboardView: View {
     @ObservedObject var history: HistoryStore
     @ObservedObject var usage: AppUsageTracker
     @ObservedObject var timeline: TimelineEngine
+    @ObservedObject var devServers: DevServerCollector
 
     @State private var chartRange: HistoryStore.Range = .fiveMinutes
 
@@ -36,6 +37,7 @@ struct DashboardView: View {
                     chartsBlock
                     timelineSection
                     processSection
+                    devServersSection
                     usageSection
                 }
                 .padding(28)
@@ -49,7 +51,9 @@ struct DashboardView: View {
         .task {
             metrics.start()
             processes.start()
+            devServers.start()
         }
+        .onDisappear { devServers.stop() }
     }
 
     // MARK: Cards
@@ -219,6 +223,43 @@ struct DashboardView: View {
                 .font(header ? Theme.label : Theme.mono)
                 .foregroundStyle(header ? Theme.textDim : Theme.text)
                 .frame(width: 86, alignment: .trailing)
+        }
+    }
+
+    // MARK: Dev servers
+
+    private var devServersSection: some View {
+        surface {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("DEV SERVERS").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+
+                if devServers.servers.isEmpty {
+                    Text("No local servers listening")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textDim)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(devServers.servers) { server in
+                            HStack(spacing: 12) {
+                                Text(":\(String(server.port))")
+                                    .font(Theme.mono)
+                                    .foregroundStyle(Theme.accent)
+                                    .frame(width: 70, alignment: .leading)
+                                Text(server.command)
+                                    .font(Theme.body)
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("pid \(String(server.pid))")
+                                    .font(Theme.mono)
+                                    .foregroundStyle(Theme.textDim)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

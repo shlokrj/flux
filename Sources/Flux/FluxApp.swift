@@ -12,6 +12,7 @@ struct FluxApp: App {
     @StateObject private var usage = AppUsageTracker()
     @StateObject private var history = HistoryStore()
     @StateObject private var timeline = TimelineEngine()
+    @StateObject private var devServers = DevServerCollector()
 
     var body: some Scene {
         MenuBarExtra {
@@ -22,7 +23,7 @@ struct FluxApp: App {
         .menuBarExtraStyle(.window)
 
         Window("Flux Dashboard", id: "dashboard") {
-            DashboardView(metrics: metrics, processes: processes, history: history, usage: usage, timeline: timeline)
+            DashboardView(metrics: metrics, processes: processes, history: history, usage: usage, timeline: timeline, devServers: devServers)
         }
     }
 }
