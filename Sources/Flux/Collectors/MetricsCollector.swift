@@ -20,19 +20,22 @@ final class MetricsCollector: ObservableObject {
     private let battery = BatteryReader()
     private var network = NetworkReader()
 
-    /// Where each sample is persisted, if attached. Weak: the store is owned by
-    /// the app for its whole lifetime.
+    /// Where each sample is persisted / analyzed, if attached. Weak: both are
+    /// owned by the app for its whole lifetime.
     private weak var history: HistoryStore?
+    private weak var timeline: TimelineEngine?
 
     init(interval: TimeInterval = 2) {
         self.interval = interval
     }
 
     /// Begin sampling. Safe to call repeatedly — it restarts the timer. Pass a
-    /// `HistoryStore` once (e.g. at launch) to start persisting samples; later
-    /// calls without one keep recording to the same store.
-    func start(recording history: HistoryStore? = nil) {
+    /// `HistoryStore` / `TimelineEngine` once (e.g. at launch) to start
+    /// persisting and analyzing samples; later calls without them keep the same
+    /// targets.
+    func start(recording history: HistoryStore? = nil, timeline: TimelineEngine? = nil) {
         if let history { self.history = history }
+        if let timeline { self.timeline = timeline }
         stop()
         sample()
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -57,5 +60,6 @@ final class MetricsCollector: ObservableObject {
         )
         latest = snapshot
         history?.record(snapshot)
+        timeline?.ingest(snapshot)
     }
 }

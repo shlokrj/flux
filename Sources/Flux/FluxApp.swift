@@ -11,6 +11,7 @@ struct FluxApp: App {
     @StateObject private var processes = ProcessCollector()
     @StateObject private var usage = AppUsageTracker()
     @StateObject private var history = HistoryStore()
+    @StateObject private var timeline = TimelineEngine()
 
     init() {
         FontLoader.registerBundledFonts()
@@ -20,12 +21,12 @@ struct FluxApp: App {
         MenuBarExtra {
             MenuBarView(metrics: metrics, processes: processes, usage: usage)
         } label: {
-            MenuBarLabel(metrics: metrics, history: history, usage: usage)
+            MenuBarLabel(metrics: metrics, history: history, usage: usage, timeline: timeline)
         }
         .menuBarExtraStyle(.window)
 
         Window("Flux Dashboard", id: "dashboard") {
-            DashboardView(metrics: metrics, processes: processes, history: history, usage: usage)
+            DashboardView(metrics: metrics, processes: processes, history: history, usage: usage, timeline: timeline)
         }
     }
 }

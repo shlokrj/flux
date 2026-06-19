@@ -7,6 +7,7 @@ struct MenuBarLabel: View {
     @ObservedObject var metrics: MetricsCollector
     var history: HistoryStore
     var usage: AppUsageTracker
+    var timeline: TimelineEngine
 
     var body: some View {
         HStack(spacing: 4) {
@@ -14,10 +15,10 @@ struct MenuBarLabel: View {
             Text(text)
         }
         // Always present once the app launches, so this is where sampling,
-        // history recording, and app-usage tracking kick off (whether or not
-        // the dashboard is open).
+        // history recording, timeline analysis, and app-usage tracking kick off
+        // (whether or not the dashboard is open).
         .task {
-            metrics.start(recording: history)
+            metrics.start(recording: history, timeline: timeline)
             usage.start()
         }
     }

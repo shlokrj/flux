@@ -8,6 +8,7 @@ struct DashboardView: View {
     @ObservedObject var processes: ProcessCollector
     @ObservedObject var history: HistoryStore
     @ObservedObject var usage: AppUsageTracker
+    @ObservedObject var timeline: TimelineEngine
 
     @State private var chartRange: HistoryStore.Range = .fiveMinutes
 
@@ -33,6 +34,7 @@ struct DashboardView: View {
                     }
 
                     chartsBlock
+                    timelineSection
                     processSection
                     usageSection
                 }
@@ -217,6 +219,51 @@ struct DashboardView: View {
                 .font(header ? Theme.label : Theme.mono)
                 .foregroundStyle(header ? Theme.textDim : Theme.text)
                 .frame(width: 86, alignment: .trailing)
+        }
+    }
+
+    // MARK: Timeline
+
+    private var timelineSection: some View {
+        surface {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("TIMELINE").font(Theme.label).tracking(0.6).foregroundStyle(Theme.textDim)
+
+                if timeline.events.isEmpty {
+                    Text("No events yet — Flux flags CPU spikes, low battery, high memory, and network spikes")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textDim)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(timeline.events.prefix(10)) { event in
+                            HStack(spacing: 10) {
+                                Image(systemName: icon(for: event.kind))
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.accent)
+                                    .frame(width: 18)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(event.message).font(Theme.body).foregroundStyle(Theme.text)
+                                    Text(event.timestamp, format: .dateTime.hour().minute())
+                                        .font(Theme.font(11, .regular)).foregroundStyle(Theme.textDim)
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func icon(for kind: TimelineEngine.Event.Kind) -> String {
+        switch kind {
+        case .highCPU: return "cpu"
+        case .highMemory: return "memorychip"
+        case .lowBattery: return "battery.25"
+        case .storageJump: return "internaldrive"
+        case .networkSpike: return "network"
+        case .longRunningProcess: return "clock"
         }
     }
 
