@@ -101,9 +101,12 @@ struct DashboardView: View {
             HStack(alignment: .top, spacing: 12) {
                 systemSummary
                     .frame(minWidth: 260, idealWidth: 280, maxWidth: 300)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 activityBlock
                     .frame(minWidth: 420, maxWidth: .infinity)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 12) {
                 systemSummary
@@ -275,9 +278,12 @@ struct DashboardView: View {
             HStack(alignment: .top, spacing: 12) {
                 processSection
                     .frame(minWidth: 500, maxWidth: .infinity)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 devServersSection
                     .frame(minWidth: 290, idealWidth: 330, maxWidth: 380)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 12) {
                 processSection
@@ -400,9 +406,12 @@ struct DashboardView: View {
     private var insightsRow: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 12) {
-                timelineSection.frame(minWidth: 360, maxWidth: .infinity)
-                usageSection.frame(minWidth: 360, maxWidth: .infinity)
+                timelineSection
+                    .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                usageSection
+                    .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 12) {
                 timelineSection
@@ -541,7 +550,7 @@ struct DashboardView: View {
     private func surface<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
             .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
     }
