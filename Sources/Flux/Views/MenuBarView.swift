@@ -11,9 +11,13 @@ struct MenuBarLabel: View {
     var timeline: TimelineEngine
 
     var body: some View {
-        HStack(spacing: 4) {
+        // Kept deliberately compact (icon + CPU%) so it's less likely to get
+        // hidden behind the notch on space-constrained menu bars.
+        HStack(spacing: 3) {
             Image(systemName: "gauge.medium")
-            Text(text)
+            if let cpu = metrics.latest?.cpuPercentText {
+                Text(cpu)
+            }
         }
         // Always present once the app launches, so this is where sampling,
         // history recording, timeline analysis, process enumeration, and
@@ -25,11 +29,6 @@ struct MenuBarLabel: View {
             metrics.attachSources(processes: processes, usage: usage)
             metrics.start(recording: history, timeline: timeline)
         }
-    }
-
-    private var text: String {
-        guard let latest = metrics.latest else { return "Flux" }
-        return "\(latest.cpuPercentText) · \(latest.memoryPercentText)"
     }
 }
 
