@@ -41,6 +41,19 @@ extension ProcessSnapshot {
         "\(Int((cpuUsage * 100).rounded()))%"
     }
 
+    /// Whether this looks like a developer runtime / tool (Node, Python, a DB,
+    /// etc.) — used to highlight dev activity. ("go" is intentionally omitted;
+    /// it would match "Google".)
+    var isDeveloperTool: Bool {
+        let needles = [
+            "node", "python", "ruby", "java", "deno", "bun", "php",
+            "cargo", "rustc", "dotnet", "gunicorn", "uvicorn", "vite",
+            "webpack", "postgres", "redis", "mongod", "mysqld", "docker",
+        ]
+        let lowercased = name.lowercased()
+        return needles.contains { lowercased.contains($0) }
+    }
+
     /// e.g. `"1.4 GB"` or `"800 MB"`.
     var memoryText: String {
         let mb = Double(memoryBytes) / 1_048_576.0

@@ -199,7 +199,12 @@ struct DashboardView: View {
                             .frame(maxWidth: .infinity, minHeight: 80)
                     } else {
                         ForEach(processes.sorted.prefix(12)) { process in
-                            processRow(process.name, process.cpuPercentText, process.memoryText)
+                            processRow(
+                                process.name,
+                                process.cpuPercentText,
+                                process.memoryText,
+                                dev: process.isDeveloperTool
+                            )
                         }
                     }
                 }
@@ -207,8 +212,11 @@ struct DashboardView: View {
         }
     }
 
-    private func processRow(_ name: String, _ cpu: String, _ ram: String, header: Bool = false) -> some View {
-        HStack(spacing: 12) {
+    private func processRow(_ name: String, _ cpu: String, _ ram: String, header: Bool = false, dev: Bool = false) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(dev ? Theme.accent : Color.clear)
+                .frame(width: 6, height: 6)
             Text(name)
                 .font(header ? Theme.label : Theme.body)
                 .foregroundStyle(header ? Theme.textDim : Theme.text)
