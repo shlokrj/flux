@@ -12,6 +12,10 @@ struct FluxApp: App {
     @StateObject private var usage = AppUsageTracker()
     @StateObject private var history = HistoryStore()
 
+    init() {
+        FontLoader.registerBundledFonts()
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuBarView(metrics: metrics, processes: processes)

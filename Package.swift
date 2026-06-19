@@ -13,7 +13,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Flux",
-            path: "Sources/Flux"
+            path: "Sources/Flux",
+            resources: [
+                .process("Resources")
+            ]
         )
     ],
     // Stay in Swift 5 language mode for now to keep the early scaffold simple;
